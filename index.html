@@ -825,6 +825,7 @@ td,th{
     <div class="grid two">
 
       <div class="card"><h2>Backup</h2><div class="actions"><button id="exportBackup">Export backup</button><label class="secondary" style="display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);cursor:pointer">Import backup<input id="importBackup" type="file" accept=".json" class="hidden"></label></div></div>
+      <div class="card noPrint"><h2>Online database</h2><p class="help">Use this after importing or changing audits so the same data is available on your other devices.</p><div class="actions"><button id="backupSaveOnline" type="button">Save online</button><button id="backupLoadOnline" class="secondary" type="button">Load online</button></div><div class="help" id="backupOnlineStatus" style="margin-top:10px">Signed-in users can save or load cloud data here.</div></div>
       <div class="card"><h2>Utilities</h2><button class="danger" id="clearData">Clear all data</button></div>
     </div>
   </section>
@@ -26083,7 +26084,7 @@ body.v123PhotoFix input[data-photo]{
       }
       openAuditSystem();
     });
-    root.querySelector("#save").addEventListener("click", async function(){
+    async function saveOnlineNow(){
       try {
         var user = await currentUser();
         if (!user) return alert("Please sign in first using the email link.");
@@ -26119,11 +26120,13 @@ body.v123PhotoFix input[data-photo]{
         if (res.error) throw res.error;
         var c = counts();
         status("Saved online: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s).");
+        return c;
       } catch(error) {
         status("Save failed: " + (error.message || error));
+        throw error;
       }
-    });
-    root.querySelector("#load").addEventListener("click", async function(){
+    }
+    async function loadOnlineNow(){
       try {
         var user = await currentUser();
         if (!user) return alert("Please sign in first using the email link.");
@@ -26145,10 +26148,24 @@ body.v123PhotoFix input[data-photo]{
         refreshApp();
         var c = counts();
         status("Loaded online: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s).");
+        return c;
       } catch(error) {
         status("Load failed: " + (error.message || error));
+        throw error;
       }
-    });
+    }
+    window.v187OnlineDatabase = {
+      save: saveOnlineNow,
+      load: loadOnlineNow,
+      signOut: async function(){
+        var sb = await getClient();
+        await sb.auth.signOut();
+        lockAppUntilSignedIn();
+        updateStatus();
+      }
+    };
+    root.querySelector("#save").addEventListener("click", saveOnlineNow);
+    root.querySelector("#load").addEventListener("click", loadOnlineNow);
     root.querySelector("#out").addEventListener("click", async function(){
       try {
         var sb = await getClient();
@@ -26238,6 +26255,58 @@ body.v123PhotoFix input[data-photo]{
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(installRecoveryCard, 500); });
   else setTimeout(installRecoveryCard, 500);
+})();
+</script>
+
+<script id="v190-backup-online-buttons">
+(function(){
+  function counts(){
+    var s = {};
+    try { s = state || {}; } catch(e) {}
+    return {
+      locations:Array.isArray(s.locations) ? s.locations.length : 0,
+      audits:Array.isArray(s.audits) ? s.audits.length : 0,
+      actions:Array.isArray(s.actions) ? s.actions.length : 0
+    };
+  }
+  function setStatus(message){
+    var el = document.getElementById("backupOnlineStatus");
+    if (el) el.textContent = message;
+  }
+  function wire(){
+    var save = document.getElementById("backupSaveOnline");
+    var load = document.getElementById("backupLoadOnline");
+    if (save && !save.dataset.wired) {
+      save.dataset.wired = "yes";
+      save.addEventListener("click", async function(){
+        try {
+          if (!window.v187OnlineDatabase || !window.v187OnlineDatabase.save) throw new Error("Online database is still starting. Try again in a moment.");
+          setStatus("Saving online...");
+          var c = await window.v187OnlineDatabase.save();
+          c = c || counts();
+          setStatus("Saved online: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s).");
+        } catch(error) {
+          setStatus("Save failed: " + (error && error.message ? error.message : error));
+        }
+      });
+    }
+    if (load && !load.dataset.wired) {
+      load.dataset.wired = "yes";
+      load.addEventListener("click", async function(){
+        try {
+          if (!window.v187OnlineDatabase || !window.v187OnlineDatabase.load) throw new Error("Online database is still starting. Try again in a moment.");
+          setStatus("Loading online...");
+          var c = await window.v187OnlineDatabase.load();
+          c = c || counts();
+          setStatus("Loaded online: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s).");
+        } catch(error) {
+          setStatus("Load failed: " + (error && error.message ? error.message : error));
+        }
+      });
+    }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire);
+  else wire();
 })();
 </script>
 
