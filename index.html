@@ -25989,10 +25989,12 @@ body.v123PhotoFix input[data-photo]{
       '@media(max-width:760px){.box{left:8px;right:8px;bottom:8px}.grid{grid-template-columns:1fr}button,input{width:100%}}' +
       '</style>' +
       '<div class="box login">' +
-        '<div class="top"><div><strong>Online database</strong><div class="status" id="status">Type your email, then press Email login link.</div></div><button class="min" id="toggle" type="button">Hide</button></div>' +
+        '<div class="top"><div><strong>Online database</strong><div class="status" id="status">Type your email and password, then press Sign in.</div></div><button class="min" id="toggle" type="button">Hide</button></div>' +
         '<div class="grid">' +
           '<input id="email" type="email" autocomplete="email" placeholder="Your email address">' +
-          '<button id="login" type="button">Email login link</button>' +
+          '<input id="password" type="password" autocomplete="current-password" placeholder="Password">' +
+          '<button id="login" type="button">Sign in</button>' +
+          '<button id="createAccount" class="secondary" type="button">Create account / set password</button>' +
           '<button id="openApp" type="button">Open audit system</button>' +
           '<button id="save" type="button">Save online</button>' +
           '<button id="load" class="secondary" type="button">Load online</button>' +
@@ -26003,7 +26005,9 @@ body.v123PhotoFix input[data-photo]{
     var box = root.querySelector(".box");
     var statusEl = root.getElementById ? root.getElementById("status") : root.querySelector("#status");
     var emailEl = root.getElementById ? root.getElementById("email") : root.querySelector("#email");
+    var passwordEl = root.getElementById ? root.getElementById("password") : root.querySelector("#password");
     var loginBtn = root.querySelector("#login");
+    var createAccountBtn = root.querySelector("#createAccount");
     var openAppBtn = root.querySelector("#openApp");
     var saveBtn = root.querySelector("#save");
     var loadBtn = root.querySelector("#load");
@@ -26016,13 +26020,17 @@ body.v123PhotoFix input[data-photo]{
       box.classList.remove("closed");
       if (user) {
         emailEl.style.display = "none";
+        passwordEl.style.display = "none";
         loginBtn.style.display = "none";
+        createAccountBtn.style.display = "none";
         openAppBtn.style.display = "block";
         saveBtn.style.display = "block";
         loadBtn.style.display = "block";
       } else {
         emailEl.style.display = "block";
+        passwordEl.style.display = "block";
         loginBtn.style.display = "block";
+        createAccountBtn.style.display = "block";
         openAppBtn.style.display = "none";
         saveBtn.style.display = "none";
         loadBtn.style.display = "none";
@@ -26034,7 +26042,9 @@ body.v123PhotoFix input[data-photo]{
       box.classList.add("appHidden");
       host.style.display = "none";
       emailEl.style.display = "";
+      passwordEl.style.display = "";
       loginBtn.style.display = "";
+      createAccountBtn.style.display = "";
       openAppBtn.style.display = "none";
       saveBtn.style.display = "";
       loadBtn.style.display = "";
@@ -26045,10 +26055,10 @@ body.v123PhotoFix input[data-photo]{
       currentUser().then(function(user){
         var c = counts();
         if (document.body && document.body.classList.contains("v187AuthLocked")) showAuthGate(user);
-        status(user ? "Signed in. Press Open audit system." : "Not signed in yet. Type your email and press Email login link.");
+        status(user ? "Signed in. Press Open audit system." : "Not signed in yet. Type your email and password, then press Sign in.");
       }).catch(function(){
         showAuthGate(null);
-        status("Online database ready. Type your email and press Email login link.");
+        status("Online database ready. Type your email and password, then press Sign in.");
       });
     }
     root.querySelector("#toggle").addEventListener("click", function(){
@@ -26057,22 +26067,49 @@ body.v123PhotoFix input[data-photo]{
     });
     root.querySelector("#login").addEventListener("click", async function(){
       var email = String(emailEl.value || "").trim();
+      var password = String(passwordEl.value || "");
       if (!email) return alert("Enter your email address.");
+      if (!password) return alert("Enter your password.");
       if (!isAllowedEmail(email)) {
         status("This email is not allowed to access the audit system.");
         return alert("Only approved Simplifying Cleaning emails can sign in.");
       }
       try {
         var sb = await getClient();
-        status("Sending login email...");
-        var res = await sb.auth.signInWithOtp({
+        status("Signing in...");
+        var res = await sb.auth.signInWithPassword({
           email: email,
+          password: password
+        });
+        if (res.error) throw res.error;
+        status("Signed in. Press Open audit system.");
+        updateStatus();
+      } catch(error) {
+        status("Login failed: " + (error.message || error));
+      }
+    });
+    root.querySelector("#createAccount").addEventListener("click", async function(){
+      var email = String(emailEl.value || "").trim();
+      var password = String(passwordEl.value || "");
+      if (!email) return alert("Enter your email address.");
+      if (!password || password.length < 8) return alert("Enter a password with at least 8 characters.");
+      if (!isAllowedEmail(email)) {
+        status("This email is not allowed to access the audit system.");
+        return alert("Only approved Simplifying Cleaning emails can create an account.");
+      }
+      try {
+        var sb = await getClient();
+        status("Creating account...");
+        var res = await sb.auth.signUp({
+          email: email,
+          password: password,
           options:{ emailRedirectTo: window.location.protocol === "file:" ? HOSTED_APP_URL : window.location.origin + window.location.pathname }
         });
         if (res.error) throw res.error;
-        status("Login email sent. Open the email link, then come back here.");
+        status(res.data && res.data.session ? "Account created. Press Open audit system." : "Account created. Check your email once to confirm it, then sign in with this password.");
+        updateStatus();
       } catch(error) {
-        status("Login failed: " + (error.message || error));
+        status("Account setup failed: " + (error.message || error));
       }
     });
     root.querySelector("#openApp").addEventListener("click", async function(){
