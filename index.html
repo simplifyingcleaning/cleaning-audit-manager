@@ -26227,7 +26227,14 @@ body.v123PhotoFix input[data-photo]{
           .limit(1);
         if (existing.error) throw existing.error;
         if (existing.data && existing.data.length) {
-          var onlineCounts = countBackupState(existing.data[0].backup_data || {});
+          var existingBackup = existing.data[0].backup_data || {};
+          var existingState = existingBackup && existingBackup.state ? existingBackup.state : existingBackup;
+          existingState = existingState && typeof existingState === "object" ? existingState : {};
+          var onlineCounts = {
+            locations:Array.isArray(existingState.locations) ? existingState.locations.length : 0,
+            audits:Array.isArray(existingState.audits) ? existingState.audits.length : 0,
+            actions:Array.isArray(existingState.actions) ? existingState.actions.length : 0
+          };
           if (onlineCounts.audits > localCounts.audits && !confirm("The online backup has more saved audits (" + onlineCounts.audits + ") than this browser (" + localCounts.audits + "). Save this browser online anyway?")) {
             status("Save online cancelled to protect the larger online backup.");
             return;
