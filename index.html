@@ -26116,7 +26116,7 @@ body.v123PhotoFix input[data-photo]{
       var user = await currentUser();
       if (!user) {
         showAuthGate(null);
-        status("Please sign in first using the email link.");
+        status("Please sign in first using your email and password.");
         return;
       }
       openAuditSystem();
@@ -26124,7 +26124,7 @@ body.v123PhotoFix input[data-photo]{
     async function saveOnlineNow(){
       try {
         var user = await currentUser();
-        if (!user) return alert("Please sign in first using the email link.");
+        if (!user) return alert("Please sign in first using your email and password.");
         var sb = await getClient();
         var localCounts = counts();
         if (!localCounts.locations && !localCounts.audits && !localCounts.actions) {
@@ -26151,6 +26151,7 @@ body.v123PhotoFix input[data-photo]{
         };
         status("Saving online...");
         var res = await sb.from("audit_backups").insert({
+          user_id:user.id,
           backup_name:CLOUD_BACKUP_NAME,
           backup_data:payload
         });
@@ -26166,7 +26167,7 @@ body.v123PhotoFix input[data-photo]{
     async function loadOnlineNow(){
       try {
         var user = await currentUser();
-        if (!user) return alert("Please sign in first using the email link.");
+        if (!user) return alert("Please sign in first using your email and password.");
         if (!confirm("Load latest online data onto this device?")) return;
         var sb = await getClient();
         status("Loading online data...");
