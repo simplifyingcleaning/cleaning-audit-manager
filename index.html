@@ -667,7 +667,7 @@ td,th{
   .card{box-shadow:none!important}
 }
 </style>
-<style id="v187AuthLockBoot">body.v187AuthLocked > :not(#v187CloudHost){display:none!important}#v183CloudPanel,#v186CloudPanel{display:none!important}</style>
+<style id="v187AuthLockBoot">#v187CloudHost{display:none!important}body.v187AuthLocked #v187CloudHost{display:block!important}body.v187AuthLocked > :not(#v187CloudHost){display:none!important}#v183CloudPanel,#v186CloudPanel{display:none!important}</style>
 </head>
 <body class="v187AuthLocked">
 <header>
@@ -1880,7 +1880,19 @@ function importBackup(file) {
       const parsed = JSON.parse(reader.result);
       if (!parsed.locations || !parsed.audits || !parsed.actions) throw new Error("Invalid backup");
       state = parsed;
-      saveState();
+      try {
+        saveState();
+      } catch(saveError) {
+        const lean = JSON.parse(JSON.stringify(parsed));
+        (lean.audits || []).forEach(audit => {
+          Object.keys(audit).forEach(key => {
+            if (/^(areaScores|recalculated|backfilled|scoreMethod|report|photo)/i.test(key)) delete audit[key];
+          });
+        });
+        lean.recoveryNote = "Imported in lean mode because browser storage rejected the full backup. Bulky generated report metadata was removed; audit records, observations, actions and photo evidence were kept where possible.";
+        state = lean;
+        saveState();
+      }
       if (typeof renderAll === "function") renderAll();
       else {
         try { if (typeof renderDashboard === "function") renderDashboard(); } catch(e) {}
@@ -1890,7 +1902,7 @@ function importBackup(file) {
       }
       alert("Backup imported. Locations and saved audits have been restored on this device.");
     } catch (e) {
-      alert("Could not import backup.");
+      alert("Could not import backup: " + (e && e.message ? e.message : e));
     }
   };
   reader.readAsText(file);
@@ -25841,7 +25853,7 @@ body.v123PhotoFix input[data-photo]{
     if (!document.getElementById("v187AuthLockStyle")) {
       var style = document.createElement("style");
       style.id = "v187AuthLockStyle";
-      style.textContent = "body.v187AuthLocked > :not(#v187CloudHost){display:none!important}#v183CloudPanel,#v186CloudPanel{display:none!important}";
+      style.textContent = "#v187CloudHost{display:none!important}body.v187AuthLocked #v187CloudHost{display:block!important}body.v187AuthLocked > :not(#v187CloudHost){display:none!important}#v183CloudPanel,#v186CloudPanel{display:none!important}";
       document.head.appendChild(style);
     }
   }
@@ -25851,6 +25863,8 @@ body.v123PhotoFix input[data-photo]{
   }
   function unlockAppAfterSignIn(){
     if (document.body) document.body.classList.remove("v187AuthLocked");
+    var host = document.getElementById("v187CloudHost");
+    if (host) host.style.display = "none";
   }
   lockAppUntilSignedIn();
 
@@ -25995,6 +26009,7 @@ body.v123PhotoFix input[data-photo]{
     function status(message){ statusEl.textContent = message; }
     function showAuthGate(user){
       lockAppUntilSignedIn();
+      host.style.display = "";
       box.classList.remove("appHidden");
       box.classList.add("login");
       box.classList.remove("closed");
@@ -26016,6 +26031,7 @@ body.v123PhotoFix input[data-photo]{
       box.classList.remove("login");
       box.classList.remove("closed");
       box.classList.add("appHidden");
+      host.style.display = "none";
       emailEl.style.display = "";
       loginBtn.style.display = "";
       openAppBtn.style.display = "none";
@@ -26209,7 +26225,7 @@ body.v123PhotoFix input[data-photo]{
     card.innerHTML =
       '<h2>Restore saved audits</h2>' +
       '<p class="help">Old saved data needs to be imported once, then saved online.</p>' +
-      '<div class="list"><strong>Recovered backup file</strong><div class="help">C:\\\\Users\\\\simpl\\\\Downloads\\\\recovered-old-audit-data-combined.json</div></div>' +
+      '<div class="list"><strong>Recovered backup file</strong><div class="help">C:\\\\Users\\\\simpl\\\\Downloads\\\\recovered-old-audit-data-with-photos.json</div></div>' +
       '<div class="actions"><button type="button" class="secondary" id="v189ChooseBackup">Import recovered backup</button></div>';
     backup.insertBefore(card, backup.firstChild);
     var button = document.getElementById("v189ChooseBackup");
