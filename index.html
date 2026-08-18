@@ -25062,6 +25062,7 @@ body.v123PhotoFix input[data-photo]{
     var code = search.get("code");
     var accessToken = hash.get("access_token");
     var refreshToken = hash.get("refresh_token");
+    var type = search.get("type") || hash.get("type");
     var handled = false;
 
     if (code) {
@@ -25080,7 +25081,7 @@ body.v123PhotoFix input[data-photo]{
     if (handled && window.history && window.history.replaceState) {
       window.history.replaceState(null, document.title, window.location.origin + window.location.pathname);
     }
-    return handled;
+    return {handled:handled, type:type || ""};
   }
   async function currentUser(){
     var sb = await getClient();
@@ -25995,6 +25996,8 @@ body.v123PhotoFix input[data-photo]{
           '<input id="password" type="password" autocomplete="current-password" placeholder="Password">' +
           '<button id="login" type="button">Sign in</button>' +
           '<button id="createAccount" class="secondary" type="button">Create account / set password</button>' +
+          '<button id="resetPassword" class="secondary" type="button">Send reset email</button>' +
+          '<button id="updatePassword" type="button">Set new password</button>' +
           '<button id="openApp" type="button">Open audit system</button>' +
           '<button id="save" type="button">Save online</button>' +
           '<button id="load" class="secondary" type="button">Load online</button>' +
@@ -26008,10 +26011,29 @@ body.v123PhotoFix input[data-photo]{
     var passwordEl = root.getElementById ? root.getElementById("password") : root.querySelector("#password");
     var loginBtn = root.querySelector("#login");
     var createAccountBtn = root.querySelector("#createAccount");
+    var resetPasswordBtn = root.querySelector("#resetPassword");
+    var updatePasswordBtn = root.querySelector("#updatePassword");
     var openAppBtn = root.querySelector("#openApp");
     var saveBtn = root.querySelector("#save");
     var loadBtn = root.querySelector("#load");
     function status(message){ statusEl.textContent = message; }
+    function showPasswordResetMode(){
+      lockAppUntilSignedIn();
+      box.classList.remove("appHidden");
+      box.classList.add("login");
+      box.classList.remove("closed");
+      host.style.display = "";
+      emailEl.style.display = "none";
+      passwordEl.style.display = "block";
+      loginBtn.style.display = "none";
+      createAccountBtn.style.display = "none";
+      resetPasswordBtn.style.display = "none";
+      updatePasswordBtn.style.display = "block";
+      openAppBtn.style.display = "none";
+      saveBtn.style.display = "none";
+      loadBtn.style.display = "none";
+      status("Enter your new password, then press Set new password.");
+    }
     function showAuthGate(user){
       lockAppUntilSignedIn();
       host.style.display = "";
@@ -26023,6 +26045,8 @@ body.v123PhotoFix input[data-photo]{
         passwordEl.style.display = "none";
         loginBtn.style.display = "none";
         createAccountBtn.style.display = "none";
+        resetPasswordBtn.style.display = "none";
+        updatePasswordBtn.style.display = "none";
         openAppBtn.style.display = "block";
         saveBtn.style.display = "block";
         loadBtn.style.display = "block";
@@ -26031,6 +26055,8 @@ body.v123PhotoFix input[data-photo]{
         passwordEl.style.display = "block";
         loginBtn.style.display = "block";
         createAccountBtn.style.display = "block";
+        resetPasswordBtn.style.display = "block";
+        updatePasswordBtn.style.display = "none";
         openAppBtn.style.display = "none";
         saveBtn.style.display = "none";
         loadBtn.style.display = "none";
@@ -26045,6 +26071,8 @@ body.v123PhotoFix input[data-photo]{
       passwordEl.style.display = "";
       loginBtn.style.display = "";
       createAccountBtn.style.display = "";
+      resetPasswordBtn.style.display = "";
+      updatePasswordBtn.style.display = "none";
       openAppBtn.style.display = "none";
       saveBtn.style.display = "";
       loadBtn.style.display = "";
@@ -26110,6 +26138,41 @@ body.v123PhotoFix input[data-photo]{
         updateStatus();
       } catch(error) {
         status("Account setup failed: " + (error.message || error));
+      }
+    });
+    root.querySelector("#resetPassword").addEventListener("click", async function(){
+      var email = String(emailEl.value || "").trim();
+      if (!email) return alert("Enter your email address.");
+      if (!isAllowedEmail(email)) {
+        status("This email is not allowed to access the audit system.");
+        return alert("Only approved Simplifying Cleaning emails can reset a password.");
+      }
+      try {
+        var sb = await getClient();
+        status("Sending reset email...");
+        var res = await sb.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.protocol === "file:" ? HOSTED_APP_URL : window.location.origin + window.location.pathname
+        });
+        if (res.error) throw res.error;
+        status("Reset email sent. Open the email link, then enter your new password here.");
+      } catch(error) {
+        status("Reset failed: " + (error.message || error));
+      }
+    });
+    root.querySelector("#updatePassword").addEventListener("click", async function(){
+      var password = String(passwordEl.value || "");
+      if (!password || password.length < 8) return alert("Enter a new password with at least 8 characters.");
+      try {
+        var sb = await getClient();
+        status("Setting new password...");
+        var res = await sb.auth.updateUser({password:password});
+        if (res.error) throw res.error;
+        status("Password set. Press Open audit system.");
+        updatePasswordBtn.style.display = "none";
+        openAppBtn.style.display = "block";
+        updateStatus();
+      } catch(error) {
+        status("Password update failed: " + (error.message || error));
       }
     });
     root.querySelector("#openApp").addEventListener("click", async function(){
@@ -26216,9 +26279,18 @@ body.v123PhotoFix input[data-photo]{
       }
     });
     getClient().then(function(sb){
-      sb.auth.onAuthStateChange(function(){ updateStatus(); });
+      sb.auth.onAuthStateChange(function(eventName){
+        if (eventName === "PASSWORD_RECOVERY") showPasswordResetMode();
+        else updateStatus();
+      });
       status("Checking online login...");
-      handleLoginReturn().then(function(handled){
+      handleLoginReturn().then(function(result){
+        var handled = result && result.handled;
+        var type = result && result.type;
+        if (handled && type === "recovery") {
+          showPasswordResetMode();
+          return;
+        }
         if (handled) status("Signed in. You can now Save online or Load online.");
         updateStatus();
       }).catch(function(error){
