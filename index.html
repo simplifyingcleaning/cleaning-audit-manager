@@ -695,8 +695,8 @@ td,th{
 
   <section class="panel active" id="dashboard">
     <div class="grid four">
-      <div class="card kpi" data-drill="met"><div class="muted">Met / Strong</div><div class="metric" id="dashMet">0</div><div class="help">Latest location results â‰¥90%</div></div>
-      <div class="card kpi" data-drill="partial"><div class="muted">Partially met</div><div class="metric" id="dashPartial">0</div><div class="help">Latest location results 75â€“89%</div></div>
+      <div class="card kpi" data-drill="met"><div class="muted">Met / Strong</div><div class="metric" id="dashMet">0</div><div class="help">Latest location results >=90%</div></div>
+      <div class="card kpi" data-drill="partial"><div class="muted">Partially met</div><div class="metric" id="dashPartial">0</div><div class="help">Latest location results 75-89%</div></div>
       <div class="card kpi" data-drill="notmet"><div class="muted">Not met</div><div class="metric" id="dashNotMet">0</div><div class="help">Latest location results below 75%</div></div>
       <div class="card kpi" data-drill="due"><div class="muted">Due / overdue</div><div class="metric" id="dashDue">0</div><div class="help">6-week schedule</div></div>
     </div>
@@ -998,7 +998,7 @@ function templateFor(type, roomName) {
   const WASTE = "Waste receptacles emptied; bins externally clean, lined and not overflowing";
 
   function norm(value) {
-    return String(value || "").trim().toLowerCase().replace(/\s+/g, " ").replace(/[â€“â€”]/g, "-");
+    return String(value || "").trim().toLowerCase().replace(/\s+/g, " ").replace(/[--]/g, "-");
   }
 
   function areaType(name) {
@@ -1690,7 +1690,7 @@ function renderHotspots() {
   const counts = {};
   state.audits.forEach(a => a.items.forEach(i => {
     if (i.status === "Not met" || i.status === "Partially met") {
-      const key = `${i.area} â€” ${i.element}`;
+      const key = `${i.area} - ${i.element}`;
       counts[key] = (counts[key] || 0) + 1;
     }
   }));
@@ -1721,7 +1721,7 @@ function renderHistory() {
   if (q) audits = audits.filter(a => [a.locationName,a.auditor,a.summary].join(" ").toLowerCase().includes(q));
   document.getElementById("historyList").innerHTML = audits.length ? audits.map(a => {
     const b = band(a.locationType, a.score);
-    return `<div class="list"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><strong>${esc(a.locationName)} â€” ${esc(a.date)}</strong><div class="help">Score: ${a.score === null ? "N/A" : a.score + "%"} | ${esc(b.label)} | Outcome: ${esc(a.outcome)}</div><div class="help">${esc(a.summary || "")}</div></div><div class="actions"><button class="secondary small" data-report="${a.id}">Client report</button></div></div></div>`;
+    return `<div class="list"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><strong>${esc(a.locationName)} - ${esc(a.date)}</strong><div class="help">Score: ${a.score === null ? "N/A" : a.score + "%"} | ${esc(b.label)} | Outcome: ${esc(a.outcome)}</div><div class="help">${esc(a.summary || "")}</div></div><div class="actions"><button class="secondary small" data-report="${a.id}">Client report</button></div></div></div>`;
   }).join("") : '<div class="muted">No audits found.</div>';
   document.querySelectorAll("[data-report]").forEach(btn => btn.addEventListener("click", () => openAuditReport(btn.dataset.report)));
 }
@@ -1733,10 +1733,10 @@ function renderActions() {
   if (loc !== "all") actions = actions.filter(a => a.locationId === loc);
   if (status !== "all") actions = actions.filter(a => a.status === status);
   if (q) actions = actions.filter(a => [a.locationName,a.area,a.text,a.owner].join(" ").toLowerCase().includes(q));
-  document.getElementById("actionsList").innerHTML = actions.length ? actions.map(a => `<div class="list"><strong>${esc(a.locationName)} â€” ${esc(a.area || "General")}</strong><div>${esc(a.text)}</div><div class="help">Owner: ${esc(a.owner || "")} | Target: ${esc(a.targetDate || "")} | Status: ${esc(a.status)}</div></div>`).join("") : '<div class="muted">No actions found.</div>';
+  document.getElementById("actionsList").innerHTML = actions.length ? actions.map(a => `<div class="list"><strong>${esc(a.locationName)} - ${esc(a.area || "General")}</strong><div>${esc(a.text)}</div><div class="help">Owner: ${esc(a.owner || "")} | Target: ${esc(a.targetDate || "")} | Status: ${esc(a.status)}</div></div>`).join("") : '<div class="muted">No actions found.</div>';
 }
 function barRows(areaScores) {
-  return areaScores.map(a => `<div class="barRow"><div class="barTop"><span>${esc(a.area)}${a.fr ? " (" + esc(a.fr) + ")" : ""}</span><span>${a.score === null ? "N/A" : a.score + "%"} â€” ${esc(a.status)}</span></div><div class="barTrack"><div class="barFill" style="width:${a.score || 0}%"></div></div></div>`).join("");
+  return areaScores.map(a => `<div class="barRow"><div class="barTop"><span>${esc(a.area)}${a.fr ? " (" + esc(a.fr) + ")" : ""}</span><span>${a.score === null ? "N/A" : a.score + "%"} - ${esc(a.status)}</span></div><div class="barTrack"><div class="barFill" style="width:${a.score || 0}%"></div></div></div>`).join("");
 }
 function reportShell(title, body) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${document.querySelector("style").innerHTML}
@@ -1786,7 +1786,7 @@ function openAuditReport(id) {
   const actionRows = actions.length ? actions.map(a => `<tr><td>${esc(a.area)}</td><td>${esc(a.text)}</td><td>${esc(a.owner || "")}</td><td>${esc(a.targetDate || "")}</td><td>${esc(a.status)}</td></tr>`).join("") : '<tr><td colspan="5">No actions raised.</td></tr>';
   const reviewedRows = reviewed.length ? reviewed.map(a => `<tr><td>${esc(a.area)}</td><td>${esc(a.text)}</td><td>${esc(a.status)}</td><td>${esc(a.reviewNotes || "")}</td></tr>`).join("") : '<tr><td colspan="4">No previous actions reviewed on this audit.</td></tr>';
   const hsRows = audit.hs.map(h => `<tr><td>${esc(h.item)}</td><td>${esc(h.status)}</td><td>${esc(h.notes)}</td></tr>`).join("");
-  const photoRows = photos.length ? photos.map(p => `<div><img src="${p.src}"><div class="help">${esc(p.area)} â€” ${esc(p.element)}</div></div>`).join("") : '<div class="muted">No photos attached.</div>';
+  const photoRows = photos.length ? photos.map(p => `<div><img src="${p.src}"><div class="help">${esc(p.area)} - ${esc(p.element)}</div></div>`).join("") : '<div class="muted">No photos attached.</div>';
 
   const body = `
   <div class="reportPage">
@@ -2043,11 +2043,11 @@ function renderSummaryPresets() {
   const select = document.getElementById("summaryPreset");
   select.innerHTML = `
     <option value="">Select suggested summary</option>
-    <option value="met">Met â€” strong clean standard</option>
-    <option value="partial">Partially met â€” improvement required</option>
-    <option value="notmet">Not met â€” corrective action required</option>
-    <option value="clientPositive">Client friendly â€” positive assurance</option>
-    <option value="clientImprovement">Client friendly â€” improvement plan</option>
+    <option value="met">Met - strong clean standard</option>
+    <option value="partial">Partially met - improvement required</option>
+    <option value="notmet">Not met - corrective action required</option>
+    <option value="clientPositive">Client friendly - positive assurance</option>
+    <option value="clientImprovement">Client friendly - improvement plan</option>
     <option value="managementEscalation">Management escalation wording</option>
   `;
   select.onchange = () => {
@@ -2198,7 +2198,7 @@ function openAuditReport(id) {
   const actionRows = actions.length ? actions.map(a => `<tr><td>${esc(a.area)}</td><td>${esc(a.text)}</td><td>${esc(a.owner || "")}</td><td>${esc(a.targetDate || "")}</td><td>${esc(a.status)}</td></tr>`).join("") : '<tr><td colspan="5">No actions raised.</td></tr>';
   const reviewedRows = reviewed.length ? reviewed.map(a => `<tr><td>${esc(a.area)}</td><td>${esc(a.text)}</td><td>${esc(a.status)}</td><td>${esc(a.reviewNotes || "")}</td></tr>`).join("") : '<tr><td colspan="4">No previous actions reviewed on this audit.</td></tr>';
   const hsRows = audit.hs.map(h => `<tr><td>${esc(h.item)}</td><td>${esc(h.status)}</td><td>${esc(h.notes)}</td></tr>`).join("");
-  const photoRows = photos.length ? photos.map(p => `<div><img src="${p.src}"><div class="help">${esc(p.area)} â€” ${esc(p.element)}</div></div>`).join("") : '<div class="muted">No photos attached.</div>';
+  const photoRows = photos.length ? photos.map(p => `<div><img src="${p.src}"><div class="help">${esc(p.area)} - ${esc(p.element)}</div></div>`).join("") : '<div class="muted">No photos attached.</div>';
 
   const body = `
   <div class="reportPage">
@@ -2528,7 +2528,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       <div class="barRow">
         <div class="barTop">
           <span>${htmlEscape(area.area)}${area.fr ? " (" + htmlEscape(area.fr) + ")" : ""}</span>
-          <span>${area.score === null ? "N/A" : area.score + "%"} â€” ${htmlEscape(area.status)}</span>
+          <span>${area.score === null ? "N/A" : area.score + "%"} - ${htmlEscape(area.status)}</span>
         </div>
         <div class="barTrack"><div class="barFill" style="width:${area.score || 0}%"></div></div>
       </div>
@@ -2679,7 +2679,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
         <div class="list">
           <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
             <div>
-              <strong>${htmlEscape(a.locationName)} â€” ${htmlEscape(a.date)}</strong>
+              <strong>${htmlEscape(a.locationName)} - ${htmlEscape(a.date)}</strong>
               <div class="help">Score: ${a.score === null ? "N/A" : a.score + "%"} | ${htmlEscape(b.label)} | Outcome: ${htmlEscape(a.outcome)}</div>
               <div class="help">${htmlEscape(a.summary || "")}</div>
             </div>
@@ -3330,7 +3330,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
         <div class="barRow">
           <div class="barTop">
             <span>${escV15(area.area)}${area.fr ? " (" + escV15(area.fr) + ")" : ""}</span>
-            <span><span class="areaPill ${cls}">${area.score === null ? "N/A" : area.score + "%"} â€” ${escV15(area.status)}</span></span>
+            <span><span class="areaPill ${cls}">${area.score === null ? "N/A" : area.score + "%"} - ${escV15(area.status)}</span></span>
           </div>
           <div class="barTrack"><div class="barFill" style="width:${area.score || 0}%"></div></div>
         </div>
@@ -3547,8 +3547,8 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 <script id="v16-dedupe-criteria">
 (function(){
   const STRICT_CRITERIA = {
-    met: "Met: 90â€“100%",
-    partial: "Partially met: 75â€“89%",
+    met: "Met: 90-100%",
+    partial: "Partially met: 75-89%",
     notmet: "Not met: below 75%"
   };
 
@@ -3622,7 +3622,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
           <div class="liveAreaScore">
             <div class="top">
               <strong>${esc16(area.area)}${area.fr ? " (" + esc16(area.fr) + ")" : ""}</strong>
-              <span class="badge ${area.score >= 90 ? "good" : area.score >= 75 ? "warn" : area.score === null ? "neutral" : "bad"}">${area.score === null ? "N/A" : area.score + "%"} â€” ${esc16(area.status)}</span>
+              <span class="badge ${area.score >= 90 ? "good" : area.score >= 75 ? "warn" : area.score === null ? "neutral" : "bad"}">${area.score === null ? "N/A" : area.score + "%"} - ${esc16(area.status)}</span>
             </div>
             <div class="progress"><div style="width:${area.score || 0}%"></div></div>
           </div>
@@ -3650,8 +3650,8 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       : `<div class="reportCriteria"><b>Commercial weighting</b><span>Overall score uses equal area weighting and BICSc-aligned quality checks against the agreed site scope.</span></div>`;
     return `
       <div class="reportCriteriaGrid">
-        <div class="reportCriteria"><b>Met</b><span>90â€“100%</span></div>
-        <div class="reportCriteria"><b>Partially met</b><span>75â€“89%</span></div>
+        <div class="reportCriteria"><b>Met</b><span>90-100%</span></div>
+        <div class="reportCriteria"><b>Partially met</b><span>75-89%</span></div>
         <div class="reportCriteria"><b>Not met</b><span>Below 75%</span></div>
         <div class="reportCriteria"><b>Element scoring</b><span>Met = 2, Partially met = 1, Not met = 0, N/A excluded.</span></div>
         ${dentalExtra}
@@ -4024,7 +4024,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
     (rows || []).forEach(row => {
       const key = rowKey17(row);
       if (seen.has(key)) {
-        removed.push(row.area + " â€” " + row.element);
+        removed.push(row.area + " - " + row.element);
         return;
       }
       seen.add(key);
@@ -4332,8 +4332,8 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       : "Commercial weighting: equal weighting per audited area.";
     return `
       <div class="reportCriteriaGrid">
-        <div class="reportCriteria"><b>Met</b><span>90â€“100%</span></div>
-        <div class="reportCriteria"><b>Partially met</b><span>75â€“89%</span></div>
+        <div class="reportCriteria"><b>Met</b><span>90-100%</span></div>
+        <div class="reportCriteria"><b>Partially met</b><span>75-89%</span></div>
         <div class="reportCriteria"><b>Not met</b><span>Below 75%</span></div>
         <div class="reportCriteria"><b>Element scoring</b><span>Met = 2, Partially met = 1, Not met = 0, N/A excluded.</span></div>
         <div class="reportCriteria"><b>Overall calculation</b><span>${esc18(extra)}</span></div>
@@ -4347,7 +4347,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
         <div class="barRow">
           <div class="barTop">
             <span>${esc18(area.area)}${area.fr ? " (" + esc18(area.fr) + ")" : ""}</span>
-            <span><span class="areaPill ${cls}">${area.score === null ? "N/A" : area.score + "%"} â€” ${esc18(area.status)}</span></span>
+            <span><span class="areaPill ${cls}">${area.score === null ? "N/A" : area.score + "%"} - ${esc18(area.status)}</span></span>
           </div>
           <div class="barTrack"><div class="barFill" style="width:${area.score || 0}%"></div></div>
         </div>
@@ -5200,9 +5200,9 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       : "No significant improvement areas were identified from the percentage results.";
 
     const issues = failed.length
-      ? "Priority not-met findings included " + failed.slice(0,4).map(i => `${i.area} â€“ ${i.element}`).join("; ") + "."
+      ? "Priority not-met findings included " + failed.slice(0,4).map(i => `${i.area} - ${i.element}`).join("; ") + "."
       : partial.length
-        ? "No not-met findings were recorded, although partial compliance was noted on " + partial.slice(0,4).map(i => `${i.area} â€“ ${i.element}`).join("; ") + "."
+        ? "No not-met findings were recorded, although partial compliance was noted on " + partial.slice(0,4).map(i => `${i.area} - ${i.element}`).join("; ") + "."
         : "No not-met or partially-met findings were recorded for applicable elements.";
 
     let actionText;
@@ -5306,7 +5306,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
         <div class="areaBarPremium">
           <div class="top">
             <span>${esc20(a.area)}${a.fr ? " (" + esc20(a.fr) + ")" : ""}</span>
-            <span><span class="badge ${cls}">${a.score === null ? "N/A" : a.score + "%"} â€” ${esc20(a.outcome)}</span></span>
+            <span><span class="badge ${cls}">${a.score === null ? "N/A" : a.score + "%"} - ${esc20(a.outcome)}</span></span>
           </div>
           <div class="track"><div class="fill" style="width:${a.score || 0}%"></div></div>
         </div>
@@ -5317,8 +5317,8 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
     const weighting = type === "dental" ? "FR weighting: higher risk areas influence the final score more strongly." : "Equal area weighting: commercial sites do not use Functional Risk.";
     return `
       <div class="standardsGridPremium">
-        <div class="standardTile"><b>Met</b><span>90â€“100%</span></div>
-        <div class="standardTile"><b>Partially met</b><span>75â€“89%</span></div>
+        <div class="standardTile"><b>Met</b><span>90-100%</span></div>
+        <div class="standardTile"><b>Partially met</b><span>75-89%</span></div>
         <div class="standardTile"><b>Not met</b><span>Below 75%</span></div>
         <div class="standardTile"><b>Element score</b><span>Met = 2, Partial = 1, Not met = 0, N/A excluded.</span></div>
         <div class="standardTile"><b>Overall score</b><span>${esc20(weighting)}</span></div>
@@ -5740,7 +5740,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
     const notMet = rows.filter(r => r.status === "Not met").length;
     const na = rows.filter(r => r.status === "N/A").length;
     return `
-      <span class="badge ${badgeClass22(score)}">${score === null ? "N/A" : score + "%"} â€” ${outcome22(score)}</span>
+      <span class="badge ${badgeClass22(score)}">${score === null ? "N/A" : score + "%"} - ${outcome22(score)}</span>
       <span class="badge good">Met ${met}</span>
       <span class="badge warn">Partial ${partial}</span>
       <span class="badge bad">Not met ${notMet}</span>
@@ -5870,7 +5870,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
         divider.className = "areaHeaderDivider";
         divider.innerHTML = `
           <strong>${esc22(row.area)}</strong>
-          <span class="badge ${badgeClass22(score)}">${score === null ? "N/A" : score + "%"} â€” ${outcome22(score)}</span>
+          <span class="badge ${badgeClass22(score)}">${score === null ? "N/A" : score + "%"} - ${outcome22(score)}</span>
         `;
         wrap.insertBefore(divider, line);
         previous = current;
@@ -6037,10 +6037,10 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
   function previous(audit){return state.audits.filter(a=>a.locationId===audit.locationId&&a.id!==audit.id&&a.date<audit.date).sort((a,b)=>b.date.localeCompare(a.date))[0]||null}
   function actionCount(audit){return state.actions.filter(a=>a.sourceAuditId===audit.id).length}
   function summary(audit,ar){const r=rating(audit.locationType,audit.score).label; const weak=ar.filter(a=>a.score!=null&&a.score<75).map(a=>a.area+" ("+a.score+"%)"); const part=ar.filter(a=>a.score!=null&&a.score>=75&&a.score<90).map(a=>a.area+" ("+a.score+"%)"); const strong=ar.filter(a=>a.score>=90).map(a=>a.area+" ("+a.score+"%)"); return {conclusion:audit.score>=90?`The audit outcome is Met with an overall score of ${audit.score}% and a rating of ${r}. The site presented to a strong standard overall.`:audit.score>=75?`The audit outcome is Partially met with an overall score of ${audit.score}% and a rating of ${r}. Several standards were achieved, however consistency needs to improve.`:`The audit outcome is Not met with an overall score of ${audit.score??"N/A"}% and a rating of ${r}. Corrective action is required.`,standards:audit.locationType==="dental"?"Dental report references NHS National Standards of Healthcare Cleanliness and CQC IPC expectations. Functional Risk weighting is used.":"Commercial report is BICSc-aligned and measured against agreed site scope/specification. Equal area weighting is used.",strengths:strong.length?"Strongest areas: "+strong.slice(0,5).join(", ")+".":"No clear Met-band areas were identified.",improvements:weak.concat(part).length?"Improvement focus: "+weak.concat(part).slice(0,5).join(", ")+".":"No significant improvement areas were identified.",actions:actionCount(audit)?`${actionCount(audit)} action(s) were raised and should be reviewed at the next audit.`:"No corrective actions were raised from this audit."}}
-  function criteria(type){return `<div class="standardsGridPremium"><div class="standardTile"><b>Met</b><span>90â€“100%</span></div><div class="standardTile"><b>Partially met</b><span>75â€“89%</span></div><div class="standardTile"><b>Not met</b><span>Below 75%</span></div><div class="standardTile"><b>Element scoring</b><span>Met = 2, Partial = 1, Not met = 0, N/A excluded.</span></div><div class="standardTile"><b>${type==="dental"?"FR weighting":"Area weighting"}</b><span>${type==="dental"?"Higher risk areas influence the overall score.":"Commercial areas are weighted equally."}</span></div><div class="standardTile"><b>Evidence</b><span>Observations, actions and photos support the score.</span></div></div>`}
-  function areaBars(ar){return ar.map(a=>{const cls=a.score>=90?"good":a.score>=75?"warn":a.score==null?"neutral":"bad";return `<div class="areaBarPremium"><div class="top"><span>${esc(a.area)}${a.fr?" ("+esc(a.fr)+")":""}</span><span><span class="badge ${cls}">${a.score==null?"N/A":a.score+"%"} â€” ${esc(a.outcome)}</span></span></div><div class="track"><div class="fill" style="width:${a.score||0}%"></div></div></div>`}).join("")}
+  function criteria(type){return `<div class="standardsGridPremium"><div class="standardTile"><b>Met</b><span>90-100%</span></div><div class="standardTile"><b>Partially met</b><span>75-89%</span></div><div class="standardTile"><b>Not met</b><span>Below 75%</span></div><div class="standardTile"><b>Element scoring</b><span>Met = 2, Partial = 1, Not met = 0, N/A excluded.</span></div><div class="standardTile"><b>${type==="dental"?"FR weighting":"Area weighting"}</b><span>${type==="dental"?"Higher risk areas influence the overall score.":"Commercial areas are weighted equally."}</span></div><div class="standardTile"><b>Evidence</b><span>Observations, actions and photos support the score.</span></div></div>`}
+  function areaBars(ar){return ar.map(a=>{const cls=a.score>=90?"good":a.score>=75?"warn":a.score==null?"neutral":"bad";return `<div class="areaBarPremium"><div class="top"><span>${esc(a.area)}${a.fr?" ("+esc(a.fr)+")":""}</span><span><span class="badge ${cls}">${a.score==null?"N/A":a.score+"%"} - ${esc(a.outcome)}</span></span></div><div class="track"><div class="fill" style="width:${a.score||0}%"></div></div></div>`}).join("")}
   function photos(audit){const g={};(audit.items||[]).forEach(i=>(i.photos||[]).forEach(src=>{(g[i.area]=g[i.area]||[]); if(g[i.area].length<3)g[i.area].push({src,element:i.element})}));return g}
-  function shell(title,body){const styles=Array.from(document.querySelectorAll("style")).map(s=>s.innerHTML).join("\n");return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${styles}</style></head><body>${body}<div class="printFooter"><span>Simplifying Cleaning â€” Client Audit Report</span><span class="pages"></span></div><script>window.onload=function(){setTimeout(function(){window.print();},350);};</`+`script></body></html>`}
+  function shell(title,body){const styles=Array.from(document.querySelectorAll("style")).map(s=>s.innerHTML).join("\n");return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${styles}</style></head><body>${body}<div class="printFooter"><span>Simplifying Cleaning - Client Audit Report</span><span class="pages"></span></div><script>window.onload=function(){setTimeout(function(){window.print();},350);};</`+`script></body></html>`}
   window.openAuditReport=function(id){try{const audit=state.audits.find(a=>a.id===id); if(!audit)return alert("Audit not found."); const ar=areas(audit), sum=summary(audit,ar), b=rating(audit.locationType,audit.score), prev=previous(audit), delta=prev&&audit.score!=null&&prev.score!=null?audit.score-prev.score:null, acts=state.actions.filter(a=>a.sourceAuditId===audit.id), reviewed=state.actions.filter(a=>a.locationId===audit.locationId&&a.reviewDate===audit.date), pics=photos(audit); const met=ar.filter(a=>a.score>=90).length, partial=ar.filter(a=>a.score!=null&&a.score>=75&&a.score<90).length, notmet=ar.filter(a=>a.score!=null&&a.score<75).length; const actionRows=acts.length?acts.map(a=>`<tr><td>${esc(a.area)}</td><td>${esc(a.text)}</td><td>${esc(a.owner||"")}</td><td>${esc(a.targetDate||"")}</td><td>${esc(a.status)}</td></tr>`).join(""):'<tr><td colspan="5">No actions raised.</td></tr>'; const reviewedRows=reviewed.length?reviewed.map(a=>`<tr><td>${esc(a.area)}</td><td>${esc(a.text)}</td><td>${esc(a.status)}</td><td>${esc(a.reviewNotes||"")}</td></tr>`).join(""):'<tr><td colspan="4">No previous actions reviewed on this audit.</td></tr>'; const hsRows=(audit.hs||[]).map(h=>`<tr><td>${esc(h.item)}</td><td>${esc(h.status)}</td><td>${esc(h.notes)}</td></tr>`).join(""); const detailRows=(audit.items||[]).map(i=>`<tr><td>${esc(i.area)}</td><td>${esc(i.element)}</td><td>${esc(i.status)}</td><td>${esc(i.observation)}</td></tr>`).join(""); const photoBlocks=Object.keys(pics).length?Object.entries(pics).map(([area,p])=>`<div class="areaPhotoBlock"><h4>${esc(area)}</h4><div class="reportPhotoGrid">${p.map(x=>`<div><img src="${x.src}"><div class="help">${esc(x.element)}</div></div>`).join("")}</div></div>`).join(""):'<div class="muted">No photos attached.</div>'; const logo=typeof LOGO!=="undefined"&&LOGO?`<img src="${LOGO}" alt="Logo">`:"";
   const body=`<div class="reportPage">
     <section class="reportCover printSection"><div class="reportCoverInner"><div class="reportHeaderPremium"><div><div class="reportEyebrow">Client assurance report</div><div class="reportTitlePremium">Cleaning Audit Report</div><p class="reportMeta"><strong>${esc(audit.locationName)}</strong></p><p class="reportMeta">${esc(audit.date)} | Auditor: ${esc(audit.auditor||"Not recorded")} | ${esc(audit.locationType)} audit</p><div style="margin-top:10px"><span class="badge ${b.cls}">${esc(b.label)}</span> <span class="badge ${b.cls}">${esc(audit.outcome||outcome(audit.score))}</span></div></div>${logo}</div><div class="reportHeroGrid"><div class="reportIntroCard"><h3>Overall audit summary</h3><p>${esc(sum.conclusion)}</p></div><div class="reportIntroCard"><h3>Standards and criteria</h3><p>${esc(sum.standards)}</p>${criteria(audit.locationType)}</div></div></div></section>
@@ -6178,11 +6178,11 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
   function areaScores(audit){const g={};(audit.items||[]).forEach(i=>{const a=i.area||"General";(g[a]=g[a]||[]).push(i)});return Object.keys(g).map(a=>{const s=rawScore(g[a]);return{area:a,score:s,outcome:outcome(s),fr:g[a][0]?.fr||"",items:g[a]}})}
   function previous(audit){return state.audits.filter(a=>a.locationId===audit.locationId&&a.id!==audit.id&&a.date<audit.date).sort((a,b)=>b.date.localeCompare(a.date))[0]||null}
   function summary(audit,areas){const rate=rating(audit.locationType,audit.score).label,strong=areas.filter(a=>a.score>=90).map(a=>`${a.area} (${a.score}%)`),focus=areas.filter(a=>a.score!==null&&a.score<90).sort((a,b)=>(a.score||0)-(b.score||0)).map(a=>`${a.area} (${a.score}%)`),actions=state.actions.filter(a=>a.sourceAuditId===audit.id).length;return{conclusion:audit.score>=90?`The audit outcome is Met with an overall score of ${audit.score}% and a rating of ${rate}. The site presented to a strong standard overall, with cleaning outcomes consistently achieved across the audited areas.`:audit.score>=75?`The audit outcome is Partially met with an overall score of ${audit.score}% and a rating of ${rate}. Several standards were achieved, however consistency needs to improve in the lower scoring areas.`:`The audit outcome is Not met with an overall score of ${audit.score??"N/A"}% and a rating of ${rate}. Corrective action is required to restore the expected standard.`,standards:audit.locationType==="dental"?"Dental audits reference NHS National Standards of Healthcare Cleanliness and CQC IPC expectations. Functional Risk weighting is used.":"Commercial audits are BICSc-aligned and measured against agreed site scope/specification. Equal area weighting is used.",strengths:strong.length?`Strongest areas: ${strong.slice(0,5).join(", ")}.`:"No clear Met-band areas were identified.",improvements:focus.length?`Improvement focus: ${focus.slice(0,5).join(", ")}.`:"No significant improvement areas were identified.",actions:actions?`${actions} action(s) were raised and should be reviewed at the next audit.`:"No corrective actions were raised from this audit."}}
-  function criteria(type){return `<div class="standardsGridPremium"><div class="standardTile"><b>Met</b><span>90â€“100%</span></div><div class="standardTile"><b>Partially met</b><span>75â€“89%</span></div><div class="standardTile"><b>Not met</b><span>Below 75%</span></div><div class="standardTile"><b>Element scoring</b><span>Met = 2, Partial = 1, Not met = 0, N/A excluded.</span></div><div class="standardTile"><b>${type==="dental"?"FR weighting":"Area weighting"}</b><span>${type==="dental"?"Higher risk areas influence the overall score.":"Commercial areas are weighted equally."}</span></div><div class="standardTile"><b>Evidence</b><span>Observations, actions and photos support the score.</span></div></div>`}
-  function areaBars(areas){return areas.map(a=>{const cls=a.score>=90?"good":a.score>=75?"warn":a.score===null?"neutral":"bad";return `<div class="areaBarPremium"><div class="top"><span>${esc(a.area)}${a.fr?" ("+esc(a.fr)+")":""}</span><span><span class="badge ${cls}">${a.score===null?"N/A":a.score+"%"} â€” ${esc(a.outcome)}</span></span></div><div class="track"><div class="fill" style="width:${a.score||0}%"></div></div></div>`}).join("")}
+  function criteria(type){return `<div class="standardsGridPremium"><div class="standardTile"><b>Met</b><span>90-100%</span></div><div class="standardTile"><b>Partially met</b><span>75-89%</span></div><div class="standardTile"><b>Not met</b><span>Below 75%</span></div><div class="standardTile"><b>Element scoring</b><span>Met = 2, Partial = 1, Not met = 0, N/A excluded.</span></div><div class="standardTile"><b>${type==="dental"?"FR weighting":"Area weighting"}</b><span>${type==="dental"?"Higher risk areas influence the overall score.":"Commercial areas are weighted equally."}</span></div><div class="standardTile"><b>Evidence</b><span>Observations, actions and photos support the score.</span></div></div>`}
+  function areaBars(areas){return areas.map(a=>{const cls=a.score>=90?"good":a.score>=75?"warn":a.score===null?"neutral":"bad";return `<div class="areaBarPremium"><div class="top"><span>${esc(a.area)}${a.fr?" ("+esc(a.fr)+")":""}</span><span><span class="badge ${cls}">${a.score===null?"N/A":a.score+"%"} - ${esc(a.outcome)}</span></span></div><div class="track"><div class="fill" style="width:${a.score||0}%"></div></div></div>`}).join("")}
   function photosByArea(audit){const g={};(audit.items||[]).forEach(item=>(item.photos||[]).forEach(src=>{if(!g[item.area])g[item.area]=[];g[item.area].push({src,element:item.element})}));return g}
-  function elementCards(areas){return areas.map(area=>{const met=area.items.filter(i=>i.status==="Met").length,partial=area.items.filter(i=>i.status==="Partially met").length,notMet=area.items.filter(i=>i.status==="Not met").length,na=area.items.filter(i=>i.status==="N/A").length;return `<div class="elementsAreaCard"><div class="elementsAreaHead"><div><h3>${esc(area.area)}${area.fr?" â€” "+esc(area.fr):""}</h3><div class="help">${area.score===null?"N/A":area.score+"%"} â€” ${esc(area.outcome)}</div></div><div class="elementStats"><span class="badge good">Met ${met}</span><span class="badge warn">Partial ${partial}</span><span class="badge bad">Not met ${notMet}</span><span class="badge neutral">N/A ${na}</span></div></div><div class="elementChecklist">${area.items.map(item=>{const cls=item.status==="Met"?"good":item.status==="Partially met"?"warn":item.status==="Not met"?"bad":"neutral";return `<div class="elementLine"><div><span class="badge ${cls}">${esc(item.status)}</span></div><div><div class="elementText">${esc(item.element)}</div><div class="elementObs">${esc(window.v172ElementStatusWording(item.status))}</div></div></div>`}).join("")}</div></div>`}).join("")}
-  function shell(title,body){const styles=Array.from(document.querySelectorAll("style")).map(s=>s.innerHTML).join("\n");return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${styles}</style></head><body>${body}<div class="printFooter"><span>Simplifying Cleaning â€” Client Audit Report</span><span class="pages"></span></div><script>window.onload=function(){setTimeout(function(){window.print();},350);};</`+`script></body></html>`}
+  function elementCards(areas){return areas.map(area=>{const met=area.items.filter(i=>i.status==="Met").length,partial=area.items.filter(i=>i.status==="Partially met").length,notMet=area.items.filter(i=>i.status==="Not met").length,na=area.items.filter(i=>i.status==="N/A").length;return `<div class="elementsAreaCard"><div class="elementsAreaHead"><div><h3>${esc(area.area)}${area.fr?" - "+esc(area.fr):""}</h3><div class="help">${area.score===null?"N/A":area.score+"%"} - ${esc(area.outcome)}</div></div><div class="elementStats"><span class="badge good">Met ${met}</span><span class="badge warn">Partial ${partial}</span><span class="badge bad">Not met ${notMet}</span><span class="badge neutral">N/A ${na}</span></div></div><div class="elementChecklist">${area.items.map(item=>{const cls=item.status==="Met"?"good":item.status==="Partially met"?"warn":item.status==="Not met"?"bad":"neutral";return `<div class="elementLine"><div><span class="badge ${cls}">${esc(item.status)}</span></div><div><div class="elementText">${esc(item.element)}</div><div class="elementObs">${esc(window.v172ElementStatusWording(item.status))}</div></div></div>`}).join("")}</div></div>`}).join("")}
+  function shell(title,body){const styles=Array.from(document.querySelectorAll("style")).map(s=>s.innerHTML).join("\n");return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${styles}</style></head><body>${body}<div class="printFooter"><span>Simplifying Cleaning - Client Audit Report</span><span class="pages"></span></div><script>window.onload=function(){setTimeout(function(){window.print();},350);};</`+`script></body></html>`}
 
   window.openAuditReport=function(id){
     try{
@@ -6638,13 +6638,13 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
     }
     const strengths=strong.length?`The strongest performing areas were ${strong.slice(0,5).map(a=>`${a.area} (${a.score}%)`).join(", ")}. These areas provide evidence of good routine control and should be maintained through normal monitoring.`:"No areas achieved a clear Met-band percentage during this audit. The focus should be on restoring consistent baseline standards before the next review.";
     const improvements=weak.concat(partial).length?`The main improvement focus should be ${weak.concat(partial).slice(0,6).map(a=>`${a.area} (${a.score}%, ${a.outcome})`).join(", ")}. These areas should be checked first at the next visit because they have the greatest effect on the client-facing result.`:"No significant improvement areas were identified from the percentage results.";
-    const issues=notMetItems.length?`Priority not-met findings included ${notMetItems.slice(0,6).map(i=>`${i.area} â€” ${i.element}`).join("; ")}. These points should be corrected and reviewed to prevent repeat findings.`:partialItems.length?`No not-met findings were recorded, although partial compliance was noted on ${partialItems.slice(0,6).map(i=>`${i.area} â€” ${i.element}`).join("; ")}. These should be monitored to prevent deterioration.`:"No not-met or partially-met applicable elements were recorded.";
+    const issues=notMetItems.length?`Priority not-met findings included ${notMetItems.slice(0,6).map(i=>`${i.area} - ${i.element}`).join("; ")}. These points should be corrected and reviewed to prevent repeat findings.`:partialItems.length?`No not-met findings were recorded, although partial compliance was noted on ${partialItems.slice(0,6).map(i=>`${i.area} - ${i.element}`).join("; ")}. These should be monitored to prevent deterioration.`:"No not-met or partially-met applicable elements were recorded.";
     const actionText=actions.length?`${actions.length} corrective action(s) were raised. Each action should have a responsible owner, a target date and evidence of completion or progress at the next audit. Repeat issues should be discussed with the cleaning team and, where needed, built into supervision or retraining.`:"No formal corrective actions were raised. The recommendation is to maintain monitoring, continue routine supervision and use the detailed element results to confirm that standards remain consistent.";
     const evidence=`The scoring evidence is based on ${c.applicable} applicable checklist line(s): ${c.met} Met, ${c.partial} Partially met, ${c.notMet} Not met and ${c.na} N/A excluded. Each line is scored as Met = 2, Partially met = 1 and Not met = 0.`;
     return{conclusion,standards:standards(audit.locationType),strengths,improvements,issues,actions:actionText,evidence};
   }
-  function criteria(type){return `<div class="standardsGridPremium"><div class="standardTile"><b>Met</b><span>90â€“100%</span></div><div class="standardTile"><b>Partially met</b><span>75â€“89%</span></div><div class="standardTile"><b>Not met</b><span>Below 75%</span></div><div class="standardTile"><b>Element scoring</b><span>Met = 2, Partial = 1, Not met = 0, N/A excluded.</span></div><div class="standardTile"><b>${type==="dental"?"FR weighting":"Area weighting"}</b><span>${type==="dental"?"Higher risk areas influence the overall score.":"Commercial areas are weighted equally."}</span></div><div class="standardTile"><b>Evidence</b><span>Observations, actions and photos support the score.</span></div></div>`}
-  function areaBars(ar){return ar.map(a=>{const cls=a.score>=90?"good":a.score>=75?"warn":a.score===null?"neutral":"bad";return `<div class="areaBarPremium"><div class="top"><span>${esc(a.area)}${a.fr?" ("+esc(a.fr)+")":""}</span><span><span class="badge ${cls}">${a.score===null?"N/A":a.score+"%"} â€” ${esc(a.outcome)}</span></span></div><div class="track"><div class="fill" style="width:${a.score||0}%"></div></div></div>`}).join("")}
+  function criteria(type){return `<div class="standardsGridPremium"><div class="standardTile"><b>Met</b><span>90-100%</span></div><div class="standardTile"><b>Partially met</b><span>75-89%</span></div><div class="standardTile"><b>Not met</b><span>Below 75%</span></div><div class="standardTile"><b>Element scoring</b><span>Met = 2, Partial = 1, Not met = 0, N/A excluded.</span></div><div class="standardTile"><b>${type==="dental"?"FR weighting":"Area weighting"}</b><span>${type==="dental"?"Higher risk areas influence the overall score.":"Commercial areas are weighted equally."}</span></div><div class="standardTile"><b>Evidence</b><span>Observations, actions and photos support the score.</span></div></div>`}
+  function areaBars(ar){return ar.map(a=>{const cls=a.score>=90?"good":a.score>=75?"warn":a.score===null?"neutral":"bad";return `<div class="areaBarPremium"><div class="top"><span>${esc(a.area)}${a.fr?" ("+esc(a.fr)+")":""}</span><span><span class="badge ${cls}">${a.score===null?"N/A":a.score+"%"} - ${esc(a.outcome)}</span></span></div><div class="track"><div class="fill" style="width:${a.score||0}%"></div></div></div>`}).join("")}
   function photoGroups(audit){const g={};(audit.items||[]).forEach(item=>(item.photos||[]).forEach(src=>{if(!g[item.area])g[item.area]=[];g[item.area].push({src,element:item.element})}));return g}
   function statusClass(s){return s==="Met"?"good":s==="Partially met"?"warn":s==="Not met"?"bad":"neutral"}
   function slickElements(ar){
@@ -6655,8 +6655,8 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       return `<div class="slickElementArea">
         <div class="slickElementAreaHeader">
           <div>
-            <h3>${esc(area.area)}${area.fr?" â€” "+esc(area.fr):""}</h3>
-            <div class="sub">${area.items.length} checklist line(s) reviewed | ${area.score===null?"N/A":area.score+"%"} â€” ${esc(area.outcome)}</div>
+            <h3>${esc(area.area)}${area.fr?" - "+esc(area.fr):""}</h3>
+            <div class="sub">${area.items.length} checklist line(s) reviewed | ${area.score===null?"N/A":area.score+"%"} - ${esc(area.outcome)}</div>
           </div>
           <div class="areaScoreCircle" style="--area-score:${area.score||0}"><b>${area.score===null?"N/A":area.score+"%"}</b></div>
         </div>
@@ -6697,7 +6697,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       <div class="finding"><strong>Action visibility</strong><span class="help">Actions are shown beside the relevant failed/partial line.</span></div>
     </div>${cards}`;
   }
-  function shell(title,body){const styles=Array.from(document.querySelectorAll("style")).map(s=>s.innerHTML).join("\n");return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${styles}</style></head><body>${body}<div class="printFooter"><span>Simplifying Cleaning â€” Client Audit Report</span><span class="pages"></span></div><script>window.onload=function(){setTimeout(function(){window.print();},350);};</`+`script></body></html>`}
+  function shell(title,body){const styles=Array.from(document.querySelectorAll("style")).map(s=>s.innerHTML).join("\n");return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${styles}</style></head><body>${body}<div class="printFooter"><span>Simplifying Cleaning - Client Audit Report</span><span class="pages"></span></div><script>window.onload=function(){setTimeout(function(){window.print();},350);};</`+`script></body></html>`}
   window.openAuditReport=function(id){
     try{
       const audit=state.audits.find(a=>a.id===id); if(!audit)return alert("Audit not found.");
@@ -7116,7 +7116,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
     else conclusion=`The audit achieved an overall score of ${score}% with an outcome of Not met and a rating of ${band}. This indicates that standards observed during the audit were below the agreed expectation and require corrective action.`;
     const strengths=strong.length?`The strongest performing areas were ${strong.slice(0,5).map(a=>`${a.area} (${a.score}%)`).join(", ")}. These areas should be maintained through normal monitoring.`:"No areas achieved a clear Met-band percentage during this audit.";
     const improvements=weak.concat(partial).length?`The main improvement focus should be ${weak.concat(partial).slice(0,6).map(a=>`${a.area} (${a.score}%, ${a.outcome})`).join(", ")}. These should be checked first at the next visit.`:"No significant improvement areas were identified from the percentage results.";
-    const issues=notMetItems.length?`Priority not-met findings included ${notMetItems.slice(0,6).map(i=>`${i.area} â€” ${i.element}`).join("; ")}. These points should be corrected and reviewed to prevent repeat findings.`:partialItems.length?`No not-met findings were recorded, although partial compliance was noted on ${partialItems.slice(0,6).map(i=>`${i.area} â€” ${i.element}`).join("; ")}.`:"No not-met or partially-met applicable elements were recorded.";
+    const issues=notMetItems.length?`Priority not-met findings included ${notMetItems.slice(0,6).map(i=>`${i.area} - ${i.element}`).join("; ")}. These points should be corrected and reviewed to prevent repeat findings.`:partialItems.length?`No not-met findings were recorded, although partial compliance was noted on ${partialItems.slice(0,6).map(i=>`${i.area} - ${i.element}`).join("; ")}.`:"No not-met or partially-met applicable elements were recorded.";
     const actionText=actions.length?`${actions.length} corrective action(s) were raised. Each action should have a responsible owner, a target date and evidence of completion or progress at the next audit.`:"No formal corrective actions were raised. Continue monitoring and routine supervision.";
     const evidence=`The scoring evidence is based on ${c.applicable} applicable checklist line(s): ${c.met} Met, ${c.partial} Partially met, ${c.notMet} Not met and ${c.na} N/A excluded.`;
     return{conclusion,standards:standards(audit.locationType),strengths,improvements,issues,actions:actionText,evidence};
@@ -7124,29 +7124,29 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
   function ratingGuide(type){
     if(type==="dental"){
       return `<div class="ratingGuideGrid">
-        <div class="ratingGuideCard excellent"><b>Fully compliant</b><span class="range">95â€“100%</span><p>Excellent assurance. Standards are consistently achieved and the audited Functional Risk areas are well controlled.</p></div>
-        <div class="ratingGuideCard good"><b>Substantially compliant</b><span class="range">85â€“94%</span><p>Good assurance overall. Minor issues may exist, but they do not significantly affect overall control.</p></div>
-        <div class="ratingGuideCard acceptable"><b>Partially compliant</b><span class="range">75â€“84%</span><p>Some standards are achieved, but consistency needs improvement. Actions and follow-up checks are required.</p></div>
+        <div class="ratingGuideCard excellent"><b>Fully compliant</b><span class="range">95-100%</span><p>Excellent assurance. Standards are consistently achieved and the audited Functional Risk areas are well controlled.</p></div>
+        <div class="ratingGuideCard good"><b>Substantially compliant</b><span class="range">85-94%</span><p>Good assurance overall. Minor issues may exist, but they do not significantly affect overall control.</p></div>
+        <div class="ratingGuideCard acceptable"><b>Partially compliant</b><span class="range">75-84%</span><p>Some standards are achieved, but consistency needs improvement. Actions and follow-up checks are required.</p></div>
         <div class="ratingGuideCard poor"><b>Non-compliant</b><span class="range">Below 75%</span><p>Below expected assurance level. Corrective action, management review and re-checks should be prioritised.</p></div>
       </div>`;
     }
     return `<div class="ratingGuideGrid">
-      <div class="ratingGuideCard excellent"><b>Excellent standard</b><span class="range">90â€“100%</span><p>Cleaning is consistently achieved. Presentation, touchpoints, high/low detail and waste standards are strong.</p></div>
-      <div class="ratingGuideCard good"><b>Good standard</b><span class="range">80â€“89%</span><p>Good overall result with minor inconsistencies. Routine monitoring and targeted correction should maintain standards.</p></div>
-      <div class="ratingGuideCard acceptable"><b>Acceptable standard</b><span class="range">70â€“79%</span><p>Basic standard is present but inconsistent. Improvement actions should be agreed and reviewed at the next audit.</p></div>
+      <div class="ratingGuideCard excellent"><b>Excellent standard</b><span class="range">90-100%</span><p>Cleaning is consistently achieved. Presentation, touchpoints, high/low detail and waste standards are strong.</p></div>
+      <div class="ratingGuideCard good"><b>Good standard</b><span class="range">80-89%</span><p>Good overall result with minor inconsistencies. Routine monitoring and targeted correction should maintain standards.</p></div>
+      <div class="ratingGuideCard acceptable"><b>Acceptable standard</b><span class="range">70-79%</span><p>Basic standard is present but inconsistent. Improvement actions should be agreed and reviewed at the next audit.</p></div>
       <div class="ratingGuideCard poor"><b>Below standard</b><span class="range">Below 70%</span><p>Cleaning outcome is below agreed expectation. Escalation, cleaner briefing and a focused re-check are recommended.</p></div>
     </div>`;
   }
   function outcomeGuide(){
     return `<div class="ratingGuideGrid">
-      <div class="ratingGuideCard excellent"><b>Area outcome: Met</b><span class="range">90â€“100%</span><p>The area met the expected standard across the applicable checklist lines.</p></div>
-      <div class="ratingGuideCard acceptable"><b>Area outcome: Partially met</b><span class="range">75â€“89%</span><p>The area was broadly acceptable but had enough variation to require improvement.</p></div>
+      <div class="ratingGuideCard excellent"><b>Area outcome: Met</b><span class="range">90-100%</span><p>The area met the expected standard across the applicable checklist lines.</p></div>
+      <div class="ratingGuideCard acceptable"><b>Area outcome: Partially met</b><span class="range">75-89%</span><p>The area was broadly acceptable but had enough variation to require improvement.</p></div>
       <div class="ratingGuideCard poor"><b>Area outcome: Not met</b><span class="range">Below 75%</span><p>The area fell below the expected standard and needs corrective action.</p></div>
       <div class="ratingGuideCard good"><b>Element scoring</b><span class="range">2 / 1 / 0</span><p>Met = 2, Partially met = 1, Not met = 0. N/A is excluded from the calculation.</p></div>
     </div>`;
   }
-  function criteria(type){return `<div class="standardsGridPremium"><div class="standardTile"><b>Met</b><span>90â€“100%</span></div><div class="standardTile"><b>Partially met</b><span>75â€“89%</span></div><div class="standardTile"><b>Not met</b><span>Below 75%</span></div><div class="standardTile"><b>Element scoring</b><span>Met = 2, Partial = 1, Not met = 0, N/A excluded.</span></div><div class="standardTile"><b>${type==="dental"?"FR weighting":"Area weighting"}</b><span>${type==="dental"?"Higher risk areas influence the overall score.":"Commercial areas are weighted equally."}</span></div><div class="standardTile"><b>Evidence</b><span>Observations, actions and photos support the score.</span></div></div>`}
-  function areaBars(ar){return ar.map(a=>{const cls=a.score>=90?"good":a.score>=75?"warn":a.score===null?"neutral":"bad";return `<div class="areaBarPremium"><div class="top"><span>${esc(a.area)}${a.fr?" ("+esc(a.fr)+")":""}</span><span><span class="badge ${cls}">${a.score===null?"N/A":a.score+"%"} â€” ${esc(a.outcome)}</span></span></div><div class="track"><div class="fill" style="width:${a.score||0}%"></div></div></div>`}).join("")}
+  function criteria(type){return `<div class="standardsGridPremium"><div class="standardTile"><b>Met</b><span>90-100%</span></div><div class="standardTile"><b>Partially met</b><span>75-89%</span></div><div class="standardTile"><b>Not met</b><span>Below 75%</span></div><div class="standardTile"><b>Element scoring</b><span>Met = 2, Partial = 1, Not met = 0, N/A excluded.</span></div><div class="standardTile"><b>${type==="dental"?"FR weighting":"Area weighting"}</b><span>${type==="dental"?"Higher risk areas influence the overall score.":"Commercial areas are weighted equally."}</span></div><div class="standardTile"><b>Evidence</b><span>Observations, actions and photos support the score.</span></div></div>`}
+  function areaBars(ar){return ar.map(a=>{const cls=a.score>=90?"good":a.score>=75?"warn":a.score===null?"neutral":"bad";return `<div class="areaBarPremium"><div class="top"><span>${esc(a.area)}${a.fr?" ("+esc(a.fr)+")":""}</span><span><span class="badge ${cls}">${a.score===null?"N/A":a.score+"%"} - ${esc(a.outcome)}</span></span></div><div class="track"><div class="fill" style="width:${a.score||0}%"></div></div></div>`}).join("")}
   function photoGroups(audit){const g={};(audit.items||[]).forEach(item=>(item.photos||[]).forEach(src=>{if(!g[item.area])g[item.area]=[];g[item.area].push({src,element:item.element})}));return g}
   function statusClass(s){return s==="Met"?"good":s==="Partially met"?"warn":s==="Not met"?"bad":"neutral"}
   function slickElements(ar){
@@ -7161,13 +7161,13 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
     </div>` + ar.map(area=>{
       const ac=counts(area.items);
       return `<div class="slickElementArea">
-        <div class="slickElementAreaHeader"><div><h3>${esc(area.area)}${area.fr?" â€” "+esc(area.fr):""}</h3><div class="sub">${area.items.length} checklist line(s) | ${area.score===null?"N/A":area.score+"%"} â€” ${esc(area.outcome)}</div></div><div class="areaScoreCircle" style="--area-score:${area.score||0}"><b>${area.score===null?"N/A":area.score+"%"}</b></div></div>
+        <div class="slickElementAreaHeader"><div><h3>${esc(area.area)}${area.fr?" - "+esc(area.fr):""}</h3><div class="sub">${area.items.length} checklist line(s) | ${area.score===null?"N/A":area.score+"%"} - ${esc(area.outcome)}</div></div><div class="areaScoreCircle" style="--area-score:${area.score||0}"><b>${area.score===null?"N/A":area.score+"%"}</b></div></div>
         <div class="slickElementStats"><span class="badge good">Met ${ac.met}</span><span class="badge warn">Partial ${ac.partial}</span><span class="badge bad">Not met ${ac.notMet}</span><span class="badge neutral">N/A ${ac.na}</span></div>
         <div class="slickElementList">${area.items.map(item=>{const cls=item.status==="Not met"?"notmet":item.status==="Partially met"?"partial":item.status==="N/A"?"na":"";return `<div class="slickElementLine ${cls}"><div class="elementStatusPanel"><span class="badge ${statusClass(item.status)}">${esc(item.status)}</span><span class="photoCount">${(item.photos||[]).length}/3 photos</span></div><div><div class="elementMainText">${esc(item.element)}</div><div class="elementObservationText">${esc(window.v172ElementStatusWording(item.status))}</div>${item.actionText?`<div class="elementActionText"><strong>Action:</strong> ${esc(item.actionText)}${item.owner?` | Owner: ${esc(item.owner)}`:""}${item.targetDate?` | Target: ${esc(item.targetDate)}`:""}</div>`:""}</div></div>`}).join("")}</div>
       </div>`;
     }).join("");
   }
-  function shell(title,body){const styles=Array.from(document.querySelectorAll("style")).map(s=>s.innerHTML).join("\n");return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${styles}</style></head><body>${body}<div class="printFooter"><span>Simplifying Cleaning â€” Client Audit Report</span><span class="pages"></span></div><script>window.onload=function(){setTimeout(function(){window.print();},350);};</`+`script></body></html>`}
+  function shell(title,body){const styles=Array.from(document.querySelectorAll("style")).map(s=>s.innerHTML).join("\n");return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${styles}</style></head><body>${body}<div class="printFooter"><span>Simplifying Cleaning - Client Audit Report</span><span class="pages"></span></div><script>window.onload=function(){setTimeout(function(){window.print();},350);};</`+`script></body></html>`}
 
   window.openAuditReport=function(id){
     try{
@@ -7293,7 +7293,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
   function resize(file,max=1100,q=.78){if(typeof resizeImage==="function")return resizeImage(file,max,q);return new Promise((res,rej)=>{const r=new FileReader();r.onerror=rej;r.onload=()=>res(r.result);r.readAsDataURL(file)})}
   window.addPhoto=async function(rowId,input){const row=getRows().find(r=>r.id===rowId);if(!row)return;row.photos=row.photos||[];const files=Array.from(input.files||[]);if(!files.length)return;const remain=PHOTO_LIMIT-row.photos.length;if(remain<=0){alert("Maximum 3 photos per checklist line.");input.value="";return}for(const f of files.slice(0,remain))row.photos.push(await resize(f));if(files.length>remain)alert("Only 3 photos are allowed per checklist line. Extra photos were skipped.");input.value="";renderAuditRows()};
   function areas(){const seen=new Set(),out=[];getRows().forEach(r=>{const k=norm(r.area);if(k&&!seen.has(k)){seen.add(k);out.push(r.area)}});return out}
-  function areaStats(area){const items=getRows().filter(r=>norm(r.area)===norm(area));const s=rawScore(items);return `<span class="badge ${badge(s)}">${s===null?"N/A":s+"%"} â€” ${outcome(s)}</span><span class="badge good">Met ${items.filter(i=>i.status==="Met").length}</span><span class="badge warn">Partial ${items.filter(i=>i.status==="Partially met").length}</span><span class="badge bad">Not met ${items.filter(i=>i.status==="Not met").length}</span><span class="badge neutral">N/A ${items.filter(i=>i.status==="N/A").length}</span>`}
+  function areaStats(area){const items=getRows().filter(r=>norm(r.area)===norm(area));const s=rawScore(items);return `<span class="badge ${badge(s)}">${s===null?"N/A":s+"%"} - ${outcome(s)}</span><span class="badge good">Met ${items.filter(i=>i.status==="Met").length}</span><span class="badge warn">Partial ${items.filter(i=>i.status==="Partially met").length}</span><span class="badge bad">Not met ${items.filter(i=>i.status==="Not met").length}</span><span class="badge neutral">N/A ${items.filter(i=>i.status==="N/A").length}</span>`}
   function renderWizard(){const wrap=E("auditRows");if(!wrap||!wrap.parentNode)return;let bar=E("auditWizardBarV29");if(!getRows().length){if(bar)bar.remove();return}if(!bar){bar=document.createElement("div");bar.id="auditWizardBarV29";bar.className="auditWizardBar";wrap.parentNode.insertBefore(bar,wrap)}const ar=areas();if(!selectedAreaFilter||!ar.includes(selectedAreaFilter))selectedAreaFilter=ar[0]||"";bar.innerHTML=`<div class="auditWizardGrid"><div><label>Jump to area</label><select id="areaJumpV29">${ar.map(a=>`<option value="${esc(a)}" ${a===selectedAreaFilter?"selected":""}>${esc(a)}</option>`).join("")}</select></div><button type="button" class="secondary" id="jumpAreaV29">Jump</button><button type="button" class="secondary" id="showOnlyAreaV29">Show selected only</button><button type="button" class="secondary" id="showAllAreasV29">Show all</button><button type="button" class="danger" id="markAreaNaV29">Mark area N/A</button></div><div class="auditWizardStats" id="areaStatsV29">${areaStats(selectedAreaFilter)}</div>`;
     E("areaJumpV29").onchange=e=>{selectedAreaFilter=e.target.value;E("areaStatsV29").innerHTML=areaStats(selectedAreaFilter)};
     E("jumpAreaV29").onclick=()=>{selectedAreaFilter=E("areaJumpV29").value;const target=E(slug(selectedAreaFilter));if(target)target.scrollIntoView({behavior:"smooth",block:"start"})};
@@ -7303,7 +7303,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
   }
   function markArea(area,status){const items=getRows().filter(r=>norm(r.area)===norm(area));if(!items.length)return;if(!confirm(`Mark all ${items.length} checklist line(s) in "${area}" as ${status}?`))return;items.forEach(r=>{r.status=status;if(typeof obsPresets!=="undefined"&&obsPresets[status])r.observation=obsPresets[status];if(status==="N/A"){r.actionText="";r.owner="";r.targetDate=""}});renderAuditRows()}
   function setStatus(row,status){row.status=status;if(typeof obsPresets!=="undefined"&&obsPresets[status])row.observation=obsPresets[status];renderAuditRows()}
-  window.renderAuditRows=function(onlySelected){const data=getRows(),wrap=E("auditRows");if(!wrap)return;renderWizard();if(!data.length){wrap.innerHTML='<div class="muted">Load an audit to start.</div>';return}const groups=group(data), visible=onlySelected&&selectedAreaFilter?groups.filter(g=>norm(g.area)===norm(selectedAreaFilter)):groups;wrap.innerHTML="";visible.forEach(g=>{const card=document.createElement("div");card.className="auditAreaCardV29";card.id=slug(g.area);card.innerHTML=`<div class="auditAreaHeadV29"><div><h3>${esc(g.area)}${g.fr?" â€” "+esc(g.fr):""}</h3><div class="help">${g.items.length} checklist line(s)</div></div><div class="auditWizardStats">${areaStats(g.area)}</div></div><div class="auditAreaBodyV29"></div>`;const body=card.querySelector(".auditAreaBodyV29");g.items.forEach(row=>{row.photos=row.photos||[];const cls=row.status==="Not met"?"notmet":row.status==="Partially met"?"partial":row.status==="N/A"?"na":"";const line=document.createElement("div");line.className="auditLineV29 "+cls;line.innerHTML=`<div class="auditLineHeaderV29"><div><div class="auditElementTitleV29">${esc(row.element)}</div><div class="help">${esc(row.area)}${row.fr?" | "+esc(row.fr):""} | ${row.photos.length}/3 photos</div></div><div class="auditQuickButtonsV29">${STATUS.map(s=>`<button type="button" class="tick ${row.status===s?"active "+(s==="Met"?"met":s==="Partially met"?"partial":s==="Not met"?"notmet":"na"):""}" data-status="${esc(s)}">${esc(s)}</button>`).join("")}</div></div><div class="auditDetailsGridV29"><div><label>Observation</label><textarea data-field="observation">${esc(row.observation||"")}</textarea></div><div><label>Action required</label><textarea data-field="actionText" placeholder="Only add if action is needed">${esc(row.actionText||"")}</textarea></div><div><label>Owner</label><input type="text" data-field="owner" value="${esc(row.owner||"")}" placeholder="Optional"></div><div><label>Target date</label><input type="date" data-field="targetDate" value="${esc(row.targetDate||"")}"></div></div><div class="auditPhotoBoxV29"><label>Photos for this checklist line (${row.photos.length}/3)</label><div class="auditPhotoActionsV29"><label class="cameraUploadBtnV29">Take photo<input class="hiddenFileInputV29" type="file" accept="image/*" capture="environment" data-photo-camera ${row.photos.length>=PHOTO_LIMIT?"disabled":""}></label><label class="galleryUploadBtnV29">Upload photo<input class="hiddenFileInputV29" type="file" accept="image/*" multiple data-photo-gallery ${row.photos.length>=PHOTO_LIMIT?"disabled":""}></label><span class="help">Mobile users can take photos as they go.</span></div><div class="photoGrid" style="margin-top:8px">${row.photos.map((src,i)=>`<div><img src="${src}"><button class="secondary small" type="button" data-remove-photo="${i}" style="margin-top:4px;width:100%">Remove</button></div>`).join("")}</div></div>`;
+  window.renderAuditRows=function(onlySelected){const data=getRows(),wrap=E("auditRows");if(!wrap)return;renderWizard();if(!data.length){wrap.innerHTML='<div class="muted">Load an audit to start.</div>';return}const groups=group(data), visible=onlySelected&&selectedAreaFilter?groups.filter(g=>norm(g.area)===norm(selectedAreaFilter)):groups;wrap.innerHTML="";visible.forEach(g=>{const card=document.createElement("div");card.className="auditAreaCardV29";card.id=slug(g.area);card.innerHTML=`<div class="auditAreaHeadV29"><div><h3>${esc(g.area)}${g.fr?" - "+esc(g.fr):""}</h3><div class="help">${g.items.length} checklist line(s)</div></div><div class="auditWizardStats">${areaStats(g.area)}</div></div><div class="auditAreaBodyV29"></div>`;const body=card.querySelector(".auditAreaBodyV29");g.items.forEach(row=>{row.photos=row.photos||[];const cls=row.status==="Not met"?"notmet":row.status==="Partially met"?"partial":row.status==="N/A"?"na":"";const line=document.createElement("div");line.className="auditLineV29 "+cls;line.innerHTML=`<div class="auditLineHeaderV29"><div><div class="auditElementTitleV29">${esc(row.element)}</div><div class="help">${esc(row.area)}${row.fr?" | "+esc(row.fr):""} | ${row.photos.length}/3 photos</div></div><div class="auditQuickButtonsV29">${STATUS.map(s=>`<button type="button" class="tick ${row.status===s?"active "+(s==="Met"?"met":s==="Partially met"?"partial":s==="Not met"?"notmet":"na"):""}" data-status="${esc(s)}">${esc(s)}</button>`).join("")}</div></div><div class="auditDetailsGridV29"><div><label>Observation</label><textarea data-field="observation">${esc(row.observation||"")}</textarea></div><div><label>Action required</label><textarea data-field="actionText" placeholder="Only add if action is needed">${esc(row.actionText||"")}</textarea></div><div><label>Owner</label><input type="text" data-field="owner" value="${esc(row.owner||"")}" placeholder="Optional"></div><div><label>Target date</label><input type="date" data-field="targetDate" value="${esc(row.targetDate||"")}"></div></div><div class="auditPhotoBoxV29"><label>Photos for this checklist line (${row.photos.length}/3)</label><div class="auditPhotoActionsV29"><label class="cameraUploadBtnV29">Take photo<input class="hiddenFileInputV29" type="file" accept="image/*" capture="environment" data-photo-camera ${row.photos.length>=PHOTO_LIMIT?"disabled":""}></label><label class="galleryUploadBtnV29">Upload photo<input class="hiddenFileInputV29" type="file" accept="image/*" multiple data-photo-gallery ${row.photos.length>=PHOTO_LIMIT?"disabled":""}></label><span class="help">Mobile users can take photos as they go.</span></div><div class="photoGrid" style="margin-top:8px">${row.photos.map((src,i)=>`<div><img src="${src}"><button class="secondary small" type="button" data-remove-photo="${i}" style="margin-top:4px;width:100%">Remove</button></div>`).join("")}</div></div>`;
       line.querySelectorAll("[data-status]").forEach(btn=>btn.onclick=()=>setStatus(row,btn.dataset.status));
       line.querySelectorAll("[data-field]").forEach(inp=>inp.oninput=()=>row[inp.dataset.field]=inp.value);
       line.querySelectorAll("[data-photo-camera],[data-photo-gallery]").forEach(inp=>inp.onchange=e=>addPhoto(row.id,e.target));
@@ -8051,11 +8051,11 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       card.innerHTML=`
         <div class="auditAreaHeadV32">
           <div>
-            <h3>${esc(group.area)}${group.rows[0]?.fr?" â€” "+esc(group.rows[0].fr):""}</h3>
+            <h3>${esc(group.area)}${group.rows[0]?.fr?" - "+esc(group.rows[0].fr):""}</h3>
             <div class="help">${shown.length} shown from ${group.rows.length} checklist line(s)</div>
           </div>
           <div class="areaBadgeRowV32">
-            <span class="badge ${badge(score)}">${score===null?"N/A":score+"%"} â€” ${outcome(score)}</span>
+            <span class="badge ${badge(score)}">${score===null?"N/A":score+"%"} - ${outcome(score)}</span>
             <span class="badge good">Met ${group.rows.filter(r=>r.status==="Met").length}</span>
             <span class="badge warn">Partial ${group.rows.filter(r=>r.status==="Partially met").length}</span>
             <span class="badge bad">Not met ${group.rows.filter(r=>r.status==="Not met").length}</span>
@@ -8605,11 +8605,11 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       card.innerHTML=`
         <div class="auditAreaHeadV32">
           <div>
-            <h3>${esc(group.area)}${group.rows[0]?.fr?" â€” "+esc(group.rows[0].fr):""}</h3>
+            <h3>${esc(group.area)}${group.rows[0]?.fr?" - "+esc(group.rows[0].fr):""}</h3>
             <div class="help">${shown.length} shown from ${group.rows.length} checklist line(s)</div>
           </div>
           <div class="areaBadgeRowV32">
-            <span class="badge ${badge(score)}">${score===null?"N/A":score+"%"} â€” ${outcome(score)}</span>
+            <span class="badge ${badge(score)}">${score===null?"N/A":score+"%"} - ${outcome(score)}</span>
             <span class="badge good">Met ${group.rows.filter(r=>r.status==="Met").length}</span>
             <span class="badge warn">Partial ${group.rows.filter(r=>r.status==="Partially met").length}</span>
             <span class="badge bad">Not met ${group.rows.filter(r=>r.status==="Not met").length}</span>
@@ -8839,7 +8839,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
     row.observationsV34 = text
       .split(/\n+/)
-      .map(line => line.replace(/^[-â€¢]\s*/, "").trim())
+      .map(line => line.replace(/^[--]\s*/, "").trim())
       .filter(Boolean);
 
     return row.observationsV34;
@@ -8851,7 +8851,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
     const text = String(row.actionText || "").trim();
 
     row.actionsV34 = text
-      ? text.split(/\n+/).map(line => line.replace(/^[-â€¢]\s*/, "").trim()).filter(Boolean)
+      ? text.split(/\n+/).map(line => line.replace(/^[--]\s*/, "").trim()).filter(Boolean)
       : [];
 
     return row.actionsV34;
@@ -8859,12 +8859,12 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
   function syncObservationText(row){
     const list = observationList(row);
-    row.observation = list.length ? list.map(item => `â€¢ ${item}`).join("\n") : "";
+    row.observation = list.length ? list.map(item => `- ${item}`).join("\n") : "";
   }
 
   function syncActionText(row){
     const list = actionList(row);
-    row.actionText = list.length ? list.map(item => `â€¢ ${item}`).join("\n") : "";
+    row.actionText = list.length ? list.map(item => `- ${item}`).join("\n") : "";
   }
 
   function hasAction(row){
@@ -9036,7 +9036,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
         tools.querySelector(".buildActionsV34").onclick = () => {
           const typed = String(obsField?.value || "")
             .split(/\n+/)
-            .map(line => line.replace(/^[-â€¢]\s*/, "").trim())
+            .map(line => line.replace(/^[--]\s*/, "").trim())
             .filter(Boolean);
 
           row.observationsV34 = typed;
@@ -9057,7 +9057,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
           row.observation = obsField.value;
           row.observationsV34 = String(obsField.value || "")
             .split(/\n+/)
-            .map(line => line.replace(/^[-â€¢]\s*/, "").trim())
+            .map(line => line.replace(/^[--]\s*/, "").trim())
             .filter(Boolean);
         };
 
@@ -9072,7 +9072,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
           row.actionText = actionField.value;
           row.actionsV34 = String(actionField.value || "")
             .split(/\n+/)
-            .map(line => line.replace(/^[-â€¢]\s*/, "").trim())
+            .map(line => line.replace(/^[--]\s*/, "").trim())
             .filter(Boolean);
         };
       }
@@ -9303,7 +9303,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
   function showPreview(p){
     const box=document.getElementById("importPreviewV35");
     if(!box)return;
-    box.innerHTML=`<strong>Import preview â€” safe merge mode</strong>
+    box.innerHTML=`<strong>Import preview - safe merge mode</strong>
       <div style="margin-top:6px">
         New audits to add: <b>${p.newAudits.length}</b><br>
         Duplicate audits to skip: <b>${p.duplicateAudits.length}</b><br>
@@ -9686,7 +9686,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
     if (Array.isArray(row.actionsV34) && row.actionsV34.length) return row.actionsV34;
     return String(row.actionText || "")
       .split(/\n+/)
-      .map(line => line.replace(/^[-â€¢]\s*/, "").trim())
+      .map(line => line.replace(/^[--]\s*/, "").trim())
       .filter(Boolean);
   }
 
@@ -9956,7 +9956,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       const note = document.createElement("div");
       note.id = "editAuditLoadErrorV37";
       note.className = "editAuditLoadErrorV37";
-      note.innerHTML = `<strong>Editing saved audit:</strong> ${esc(audit.locationName)} â€” ${esc(audit.date)}. Make changes, then save the audit.`;
+      note.innerHTML = `<strong>Editing saved audit:</strong> ${esc(audit.locationName)} - ${esc(audit.date)}. Make changes, then save the audit.`;
       auditRows.parentNode.insertBefore(note, auditRows);
     }
 
@@ -10175,7 +10175,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
     return String(row.actionText || "")
       .split(/\n+/)
-      .map(line => line.replace(/^[-â€¢]\s*/, "").trim())
+      .map(line => line.replace(/^[--]\s*/, "").trim())
       .filter(Boolean);
   }
 
@@ -10213,7 +10213,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
     banner.className = "editAuditBannerV38";
     banner.innerHTML = `
       <strong>Editing saved audit</strong>
-      ${esc(audit.locationName || "Audit")} â€” ${esc(audit.date || "")}. Saving will update this audit, not create a duplicate.
+      ${esc(audit.locationName || "Audit")} - ${esc(audit.date || "")}. Saving will update this audit, not create a duplicate.
       <div style="margin-top:8px">
         <button type="button" class="secondary small" id="cancelEditAuditV38">Cancel edit</button>
       </div>
@@ -10409,7 +10409,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
             <div class="list" data-audit-card-v38="${esc(audit.id)}">
               <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
                 <div>
-                  <strong>${esc(audit.locationName)} â€” ${esc(audit.date)}</strong>
+                  <strong>${esc(audit.locationName)} - ${esc(audit.date)}</strong>
                   <div class="help">Score: ${audit.score === null || audit.score === undefined ? "N/A" : audit.score + "%"} | ${esc(bandLabel(audit.locationType, audit.score))} | Outcome: ${esc(audit.outcome || outcome(audit.score))}</div>
                   <div class="help">${esc(audit.summary || "")}</div>
                 </div>
@@ -10619,7 +10619,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
     return String(row.actionText || "")
       .split(/\n+/)
-      .map(line => line.replace(/^[-â€¢]\s*/, "").trim())
+      .map(line => line.replace(/^[--]\s*/, "").trim())
       .filter(Boolean);
   }
 
@@ -10664,7 +10664,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
     banner.className = "editAuditBannerV39";
     banner.innerHTML = `
       <strong>Editing saved audit</strong>
-      ${esc(audit.locationName || "Audit")} â€” ${esc(audit.date || "")}. When you click Save, this saved audit will be updated instead of creating a duplicate.
+      ${esc(audit.locationName || "Audit")} - ${esc(audit.date || "")}. When you click Save, this saved audit will be updated instead of creating a duplicate.
       <div style="margin-top:8px">
         <button type="button" class="secondary small" id="cancelEditV39">Cancel edit</button>
       </div>
@@ -10881,7 +10881,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
         <div class="list" data-audit-id="${esc(audit.id)}">
           <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
             <div>
-              <strong>${esc(audit.locationName || "Unknown location")} â€” ${esc(audit.date || "")}</strong>
+              <strong>${esc(audit.locationName || "Unknown location")} - ${esc(audit.date || "")}</strong>
               <div class="help">
                 Score: ${audit.score === null || audit.score === undefined ? "N/A" : audit.score + "%"} |
                 ${esc(bandText(audit.locationType, audit.score))} |
@@ -11568,7 +11568,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
     row.observationsV34 = String(row.observation || "")
       .split(/\n+/)
-      .map(line => line.replace(/^[-â€¢]\s*/, "").trim())
+      .map(line => line.replace(/^[--]\s*/, "").trim())
       .filter(Boolean);
 
     return row.observationsV34;
@@ -11576,7 +11576,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
   function syncObs(row){
     const list = obsList(row);
-    row.observation = list.length ? list.map(item => "â€¢ " + item).join("\n") : "";
+    row.observation = list.length ? list.map(item => "- " + item).join("\n") : "";
   }
 
   function actionFromObservation(row, observation){
@@ -11646,7 +11646,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
     row.actionsV34 = Array.from(new Set(actions));
     row.actionText = row.actionsV34.length
-      ? row.actionsV34.map(action => "â€¢ " + action).join("\n")
+      ? row.actionsV34.map(action => "- " + action).join("\n")
       : "";
   }
 
@@ -12426,7 +12426,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
     return String(row.actionText || "")
       .split(/\n+/)
-      .map(line => line.replace(/^[-â€¢]\s*/, "").trim())
+      .map(line => line.replace(/^[--]\s*/, "").trim())
       .filter(Boolean);
   }
 
@@ -12435,7 +12435,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
     row.observationsV34 = String(row.observation || "")
       .split(/\n+/)
-      .map(line => line.replace(/^[-â€¢]\s*/, "").trim())
+      .map(line => line.replace(/^[--]\s*/, "").trim())
       .filter(Boolean);
 
     return row.observationsV34;
@@ -12443,7 +12443,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
   function syncObservations(row){
     const list = observationList(row);
-    row.observation = list.length ? list.map(item => "â€¢ " + item).join("\n") : "";
+    row.observation = list.length ? list.map(item => "- " + item).join("\n") : "";
   }
 
   function actionFromObservation(row, observation){
@@ -12516,7 +12516,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
     row.actionsV34 = Array.from(new Set(actions));
     row.actionText = row.actionsV34.length
-      ? row.actionsV34.map(action => "â€¢ " + action).join("\n")
+      ? row.actionsV34.map(action => "- " + action).join("\n")
       : "";
 
     row.status = lockedStatus;
@@ -12595,7 +12595,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
     banner.className = "editModeBannerV46";
     banner.innerHTML = `
       <strong>Editing saved audit</strong>
-      ${esc(audit.locationName || "Audit")} â€” ${esc(audit.date || "")}. Saving will overwrite this saved audit, not create a new one.
+      ${esc(audit.locationName || "Audit")} - ${esc(audit.date || "")}. Saving will overwrite this saved audit, not create a new one.
       <div style="margin-top:8px">
         <button type="button" class="secondary small" id="cancelEditV46">Cancel edit</button>
       </div>
@@ -12951,7 +12951,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
     }
 
     const action = actionFromStatus(row);
-    row.actionText = action ? "â€¢ " + action : "";
+    row.actionText = action ? "- " + action : "";
     row.actionsV34 = action ? [action] : [];
   }
 
@@ -12997,19 +12997,19 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       if (!Array.isArray(row.observationsV34) || !row.observationsV34.length) {
         row.observationsV34 = String(row.observation || "")
           .split(/\n+/)
-          .map(line => line.replace(/^[-â€¢]\s*/, "").trim())
+          .map(line => line.replace(/^[--]\s*/, "").trim())
           .filter(Boolean);
       }
 
       if (!Array.isArray(row.actionsV34) || !row.actionsV34.length) {
         row.actionsV34 = String(row.actionText || "")
           .split(/\n+/)
-          .map(line => line.replace(/^[-â€¢]\s*/, "").trim())
+          .map(line => line.replace(/^[--]\s*/, "").trim())
           .filter(Boolean);
       }
 
       if (!row.actionText && row.actionsV34.length) {
-        row.actionText = row.actionsV34.map(action => "â€¢ " + action).join("\n");
+        row.actionText = row.actionsV34.map(action => "- " + action).join("\n");
       }
     });
   }
@@ -13242,7 +13242,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
     }
 
     const label = groups
-      .map(group => `â€¢ ${group[0].name} (${group.length} copies)`)
+      .map(group => `- ${group[0].name} (${group.length} copies)`)
       .join("\n");
 
     const ok = confirm(
@@ -13327,7 +13327,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
             return `
               <div class="mergeLocationRowV48">
-                <strong>${esc(group[0].name)} â€” ${esc(group[0].type || "")}</strong>
+                <strong>${esc(group[0].name)} - ${esc(group[0].type || "")}</strong>
                 <span>${group.length} copies found</span>
                 <span>Will keep: ${esc(keep.name)} (${countAudits(keep.id)} audit(s), ${countActions(keep.id)} action(s))</span>
                 <span>Total to preserve: ${totalAudits} audit(s), ${totalActions} action(s)</span>
@@ -13623,7 +13623,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
   function inferFr(area,existing){const f=frCode(existing);if(f)return f;const t=norm(area);if(t.includes("decon")||t.includes("surgery")||t.includes("treatment")||t.includes("x-ray")||t.includes("xray"))return"FR2";if(t.includes("toilet")||t.includes("washroom")||t.includes("waiting")||t.includes("reception")||t.includes("corridor")||t.includes("stairs"))return"FR4";if(t.includes("cleaning cupboard")||t.includes("store"))return"FR5";return"FR6"}
   function sScore(s){return s==="Met"?2:s==="Partially met"?1:s==="Not met"?0:null}
   function stars(score,target){if(score===null||score===undefined||!target)return 0;if(score>=target)return 5;if(score>=target-3)return 4;if(score>=target-6)return 3;if(score>=target-9)return 2;return 1}
-  function starText(n){return n?"â˜…".repeat(n)+"â˜†".repeat(5-n):"Not rated"}
+  function starText(n){return n ? String(n) + "/5 stars" : "Not rated"}
   function areaScores(items,type){const g={};(items||[]).forEach(r=>{const a=r.area||"General";(g[a]=g[a]||[]).push(r)});return Object.keys(g).map(a=>{const rs=g[a],app=rs.filter(r=>r.status!=="N/A");let score=null;if(app.length)score=Math.round(app.reduce((sum,r)=>sum+sScore(r.status),0)/(app.length*2)*100);const fr=type==="dental"?inferFr(a,rs[0]&&rs[0].fr):(rs[0]&&rs[0].fr||"");const target=type==="dental"&&FR[fr]?FR[fr].target:null;return{area:a,rows:rs,score,fr,target,stars:type==="dental"?stars(score,target):null,met:rs.filter(r=>r.status==="Met").length,partial:rs.filter(r=>r.status==="Partially met").length,notMet:rs.filter(r=>r.status==="Not met").length,na:rs.filter(r=>r.status==="N/A").length}})}
   function overallScore(items,type){const areas=areaScores(items,type).filter(a=>a.score!==null);if(!areas.length)return null;let total=0,wt=0;areas.forEach(a=>{const w=type==="dental"&&a.target?a.target:1;total+=a.score*w;wt+=w});return Math.round(total/wt)}
   function overallOutcome(score,type){if(score===null||score===undefined)return"N/A";if(type==="dental"){if(score>=95)return"Fully compliant";if(score>=85)return"Substantially compliant";if(score>=75)return"Partially compliant";return"Non-compliant"}if(score>=90)return"Excellent standard";if(score>=80)return"Good standard";if(score>=70)return"Acceptable standard";return"Below standard"}
@@ -13634,9 +13634,9 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
   function currentType(){const id=E("auditLocation")?E("auditLocation").value:"";const loc=(state.locations||[]).find(l=>l.id===id);return loc?loc.type:"dental"}
   function addRows(){const type=currentType(),current=rows();if(!current.length)return;[...new Set(current.map(r=>r.area||"General"))].forEach(area=>{const areaRows=current.filter(r=>norm(r.area)===norm(area));const fr=type==="dental"?inferFr(area,areaRows[0]&&areaRows[0].fr):(areaRows[0]&&areaRows[0].fr||"");const adds=type==="dental"?dentalElements(area):commercialElements(area);adds.forEach(element=>{const key=norm(element);const exists=areaRows.some(r=>{const e=norm(r.element);return e===key||(key.includes("radiators")&&(e.includes("radiator")||e.includes("heater")))||(key.includes("fire extinguishers")&&(e.includes("fire extinguisher")||e.includes("fire point")))||(key.includes("computer")&&(e.includes("computer")||e.includes("keyboard")||e.includes("mouse"))) });if(!exists)current.push({id:uidLocal("row"),area,fr,element,status:"Met",observation:"",actionText:"",owner:"",targetDate:"",photos:[]})})})}
   const oldRender=window.renderAuditRows;window.renderAuditRows=function(){addRows();if(typeof oldRender==="function")oldRender.apply(this,arguments);addNotice();addFrBadges()};const oldLoad=window.loadAudit||window.cleanLoadAuditV17;if(typeof oldLoad==="function"){window.loadAudit=function(){const res=oldLoad.apply(this,arguments);addRows();if(typeof window.renderAuditRows==="function")window.renderAuditRows(false);return res}}
-  function addFrBadges(){if(currentType()!=="dental")return;document.querySelectorAll(".auditAreaHeadV32").forEach(head=>{if(head.dataset.v50Fr==="1")return;const title=head.querySelector("h3");if(!title)return;const area=String(title.textContent||"").split("â€”")[0].trim();const areaRows=rows().filter(r=>norm(r.area)===norm(area));const a=areaScores(areaRows,"dental")[0];if(!a)return;const div=document.createElement("div");div.innerHTML=`<span class="frTargetBadgeV50">${a.fr} target ${a.target}%</span><span class="frStarBadgeV50">${starText(a.stars)} ${a.stars||"N/A"} star</span>`;head.appendChild(div);head.dataset.v50Fr="1"})}
+  function addFrBadges(){if(currentType()!=="dental")return;document.querySelectorAll(".auditAreaHeadV32").forEach(head=>{if(head.dataset.v50Fr==="1")return;const title=head.querySelector("h3");if(!title)return;const area=String(title.textContent||"").split("-")[0].trim();const areaRows=rows().filter(r=>norm(r.area)===norm(area));const a=areaScores(areaRows,"dental")[0];if(!a)return;const div=document.createElement("div");div.innerHTML=`<span class="frTargetBadgeV50">${a.fr} target ${a.target}%</span><span class="frStarBadgeV50">${starText(a.stars)} ${a.stars||"N/A"} star</span>`;head.appendChild(div);head.dataset.v50Fr="1"})}
   function addNotice(){const ar=E("auditRows");if(!ar||!ar.parentNode||E("v50Notice"))return;const n=document.createElement("div");n.id="v50Notice";n.className="v50Notice";n.innerHTML="<strong>V50 update:</strong> radiators and fire extinguishers are included; dental audits use NHS healthcare-cleanliness style elements; FR area targets/star ratings are shown for healthcare areas.";ar.parentNode.insertBefore(n,ar)}
-  function actions(audit){const out=[];(audit.items||[]).forEach(row=>{if(row.status==="Met"||row.status==="N/A")return;String(row.actionText||"").split(/\n+/).map(x=>x.replace(/^[-â€¢]\s*/,"").trim()).filter(Boolean).forEach(text=>out.push({area:row.area,element:row.element,text,owner:row.owner,targetDate:row.targetDate,status:row.status}))});return out}
+  function actions(audit){const out=[];(audit.items||[]).forEach(row=>{if(row.status==="Met"||row.status==="N/A")return;String(row.actionText||"").split(/\n+/).map(x=>x.replace(/^[--]\s*/,"").trim()).filter(Boolean).forEach(text=>out.push({area:row.area,element:row.element,text,owner:row.owner,targetDate:row.targetDate,status:row.status}))});return out}
   function css(){return`@page{size:A4;margin:12mm}body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f3f5f8;color:#172033}.page{background:#fff;margin:0 auto 16px;max-width:980px;min-height:1320px;padding:34px;box-sizing:border-box;page-break-after:always}.cover{background:linear-gradient(135deg,#241152,#6a40b5 52%,#14b8a6);color:#fff;border-radius:28px;padding:34px;margin-bottom:24px}.brand{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.logo{max-width:180px;background:#fff;border-radius:16px;padding:10px}.eyebrow{text-transform:uppercase;letter-spacing:.12em;font-size:12px;font-weight:900;opacity:.85}h1{font-size:46px;line-height:1;margin:12px 0 10px}h2{font-size:24px;margin:0 0 14px;color:#241152}h3{font-size:17px;margin:0 0 8px;color:#241152}.auditFor{font-size:24px;font-weight:950;margin-top:14px}.coverGrid{display:grid;grid-template-columns:1.1fr .9fr;gap:22px;margin-top:24px}.scoreHero{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);border-radius:26px;padding:24px;text-align:center}.scoreHero .score{font-size:72px;font-weight:950;line-height:.95}.scoreHero .label{font-size:21px;font-weight:900;margin-top:8px}.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px}.meta div,.card{border:1px solid #e7edf6;border-radius:18px;background:#fff;padding:14px}.meta div{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35)}.meta b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;opacity:.75;margin-bottom:4px}.grid{display:grid;gap:14px}.two{grid-template-columns:1fr 1fr}.three{grid-template-columns:repeat(3,1fr)}.kpi{border-left:7px solid #6a40b5}.kpi .big{font-size:34px;font-weight:950;color:#241152}.bar{height:16px;background:#e8ecf3;border-radius:999px;overflow:hidden}.bar span{display:block;height:100%;background:linear-gradient(90deg,#6a40b5,#14b8a6)}.areaCard{border:1px solid #e7edf6;border-radius:18px;background:#fff;padding:14px;break-inside:avoid}.areaTop{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.stars{font-size:22px;letter-spacing:1px;color:#f59e0b;white-space:nowrap}.pill{display:inline-flex;border-radius:999px;padding:5px 8px;font-size:12px;font-weight:900;margin:3px;background:#f3f4f6;color:#344054}.good{background:#ecfdf5;color:#166534}.warn{background:#fffbeb;color:#92400e}.bad{background:#fff1f2;color:#991b1b}.blue{background:#eff6ff;color:#1e3a8a}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px;border-bottom:1px solid #e7edf6;text-align:left;vertical-align:top}th{background:#f8fafc;color:#475467}.finding{border-left:5px solid #6a40b5;background:#fbf8ff;border-radius:12px;padding:10px;margin:8px 0}.photoGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.photoGrid img{width:100%;height:140px;object-fit:cover;border-radius:14px;border:1px solid #e7edf6}.footer{font-size:11px;color:#667085;margin-top:24px;border-top:1px solid #e7edf6;padding-top:10px}@media print{body{background:#fff}.page{margin:0;box-shadow:none;max-width:none}.noPrint{display:none!important}}`}
   function openReport(id){const audit=(state.audits||[]).find(a=>a.id===id);if(!audit)return alert("Audit not found.");audit.score=overallScore(audit.items||[],audit.locationType);audit.outcome=overallOutcome(audit.score,audit.locationType);const areas=areaScores(audit.items||[],audit.locationType),acts=actions(audit),photos=(audit.items||[]).flatMap(r=>(r.photos||[]).map(src=>({src,area:r.area,element:r.element,status:r.status})));if(typeof saveState==="function"){try{saveState()}catch(e){}}
     const standard=audit.locationType==="dental"?"NHS National Standards of Healthcare Cleanliness 2025 aligned healthcare audit. FR targets and star ratings shown by functional area. Dental scope remains subject to the agreed cleaning plan and responsibilities.":"BICSc-aligned commercial cleaning audit against the agreed site cleaning plan/specification.";
@@ -13955,7 +13955,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
         note.innerHTML = "<strong>Limited clinical-area cleaning scope:</strong> " +
           "The following dental clinical areas were not audited against every healthcare cleanliness element: <b>" +
           limitedAreas.map(esc).join(", ") +
-          "</b>. The audit check for these rooms is limited to the cleaning tasks within Simplifying Cleaningâ€™s agreed domestic cleaning plan, currently floors and domestic waste only. Clinical equipment, sharps, treatment surfaces and other clinical decontamination responsibilities are excluded unless separately agreed.";
+          "</b>. The audit check for these rooms is limited to the cleaning tasks within Simplifying Cleaning's agreed domestic cleaning plan, currently floors and domestic waste only. Clinical equipment, sharps, treatment surfaces and other clinical decontamination responsibilities are excluded unless separately agreed.";
 
         const page = doc.querySelector(".page");
         const cover = doc.querySelector(".cover");
@@ -14029,7 +14029,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       const title = head.querySelector("h3");
       if (!title) return;
 
-      const area = String(title.textContent || "").split("â€”")[0].trim();
+      const area = String(title.textContent || "").split("-")[0].trim();
 
       if (!isClinicalLimitedArea(area)) return;
 
@@ -14786,7 +14786,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
   }
 
   function starsText(count){
-    return count ? "â˜…".repeat(count) + "â˜†".repeat(5 - count) : "Not rated";
+    return count ? String(count) + "/5 stars" : "Not rated";
   }
 
   function groupAreas(audit){
@@ -14858,7 +14858,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
         achieved: achieved,
         possible: possible,
         method: "Dental overall score is calculated from area percentages weighted by Functional Risk. Area scores use Met = 2, Partially met = 1, Not met = 0, N/A excluded.",
-        formula: "FR weighted average = " + Math.round(weightedTotal) + " Ã· " + totalWeight + " = " + score + "%"
+        formula: "FR weighted average = " + Math.round(weightedTotal) + " / " + totalWeight + " = " + score + "%"
       };
     }
 
@@ -14869,7 +14869,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       achieved: achieved,
       possible: possible,
       method: "Commercial overall score is calculated from all applicable checklist points: Met = 2, Partially met = 1, Not met = 0, N/A excluded.",
-      formula: achieved + " Ã· " + possible + " points = " + commercialScore + "%"
+      formula: achieved + " / " + possible + " points = " + commercialScore + "%"
     };
   }
 
@@ -14897,7 +14897,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
       var lines = String(row.actionText || "")
         .split(/\n+/)
-        .map(function(line){ return line.replace(/^[-â€¢]\s*/, "").trim(); })
+        .map(function(line){ return line.replace(/^[--]\s*/, "").trim(); })
         .filter(Boolean);
 
       if (!lines.length) {
@@ -15101,7 +15101,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
           '<div style="text-align:right"><div style="font-size:28px;font-weight:950;color:#241152">' + (area.score === null ? "N/A" : area.score + "%") + '</div>' + starHtml + '</div></div>' +
           '<div class="bar"><span style="width:' + (area.score || 0) + '%"></span></div>' +
           '<div style="margin-top:8px"><span class="pill good">Met ' + area.met + '</span><span class="pill warn">Partial ' + area.partial + '</span><span class="pill bad">Not met ' + area.notMet + '</span><span class="pill blue">N/A ' + area.na + '</span></div>' +
-          '<div class="calcBox">Area calculation: ' + area.achieved + '/' + area.possible + ' points = ' + (area.score === null ? "N/A" : area.score + "%") + (type === "dental" ? ' Â· ' + area.fr + ' target ' + area.target + '% Â· weight ' + area.weight : '') + '</div>' +
+          '<div class="calcBox">Area calculation: ' + area.achieved + '/' + area.possible + ' points = ' + (area.score === null ? "N/A" : area.score + "%") + (type === "dental" ? ' - ' + area.fr + ' target ' + area.target + '% - weight ' + area.weight : '') + '</div>' +
           '</div>';
       }).join("");
 
@@ -16230,7 +16230,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
       var textLines = String(item.actionText || "")
         .split(/\n+/)
-        .map(function(line){ return line.replace(/^[-â€¢]\s*/, "").trim(); })
+        .map(function(line){ return line.replace(/^[--]\s*/, "").trim(); })
         .filter(Boolean);
 
       if (!textLines.length) {
@@ -16824,7 +16824,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
   function starsText(star){
     if (!star) return "Not rated";
-    return "â˜…".repeat(star) + "â˜†".repeat(5 - star);
+    return String(star) + "/5 stars";
   }
 
   function groupAreas(audit){
@@ -16894,7 +16894,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
         target: null,
         star: 0,
         method: "Commercial score is calculated from all applicable checklist points: Met = 2, Partially met = 1, Not met = 0, N/A excluded.",
-        formula: achieved + " Ã· " + possible + " points = " + score + "%"
+        formula: achieved + " / " + possible + " points = " + score + "%"
       };
     }
 
@@ -16921,7 +16921,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       highestRiskScore: highestScore,
       highestRiskFr: highestRiskAreas[0] ? highestRiskAreas[0].fr : "",
       method: "NHS-style healthcare score: each functional area percentage is calculated from applicable checklist points. Where multiple FR categories are included, the report uses a blended target based on the included functional areas and caps the displayed star rating by the highest-risk FR category audited.",
-      formula: achieved + " Ã· " + possible + " points = " + score + "%. Blended target = " + blendedTarget + "%. Star rating = " + finalStar + " star(s), capped by " + (highestRiskAreas[0] ? highestRiskAreas[0].fr : "highest-risk area") + "."
+      formula: achieved + " / " + possible + " points = " + score + "%. Blended target = " + blendedTarget + "%. Star rating = " + finalStar + " star(s), capped by " + (highestRiskAreas[0] ? highestRiskAreas[0].fr : "highest-risk area") + "."
     };
   }
 
@@ -16954,7 +16954,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
       var lines = String(row.actionText || "")
         .split(/\n+/)
-        .map(function(line){ return line.replace(/^[-â€¢]\s*/, "").trim(); })
+        .map(function(line){ return line.replace(/^[--]\s*/, "").trim(); })
         .filter(Boolean);
 
       if (!lines.length) {
@@ -17168,7 +17168,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
           : '<span class="pill blue">' + esc(areaOutcome(area, type)) + '</span>';
 
         var starHtml = type === "dental"
-          ? '<div class="stars">' + starsText(area.star) + '</div><div style="font-size:11px;color:#667085">' + area.star + ' star Â· ' + esc(area.frequency) + '</div>'
+          ? '<div class="stars">' + starsText(area.star) + '</div><div style="font-size:11px;color:#667085">' + area.star + ' star - ' + esc(area.frequency) + '</div>'
           : "";
 
         return '<div class="areaCard">' +
@@ -17176,7 +17176,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
           '<div style="text-align:right"><div style="font-size:28px;font-weight:950;color:#241152">' + (area.score === null ? "N/A" : area.score + "%") + '</div>' + starHtml + '</div></div>' +
           '<div class="bar"><span style="width:' + (area.score || 0) + '%"></span></div>' +
           '<div style="margin-top:8px"><span class="pill good">Met ' + area.met + '</span><span class="pill warn">Partial ' + area.partial + '</span><span class="pill bad">Not met ' + area.notMet + '</span><span class="pill blue">N/A ' + area.na + '</span></div>' +
-          '<div class="calcBox">Area calculation: ' + area.achieved + '/' + area.possible + ' points = ' + (area.score === null ? "N/A" : area.score + "%") + (type === "dental" ? ' Â· ' + area.fr + ' target ' + area.target + '% Â· star rating from target variance' : '') + '</div>' +
+          '<div class="calcBox">Area calculation: ' + area.achieved + '/' + area.possible + ' points = ' + (area.score === null ? "N/A" : area.score + "%") + (type === "dental" ? ' - ' + area.fr + ' target ' + area.target + '% - star rating from target variance' : '') + '</div>' +
           '</div>';
       }).join("");
 
@@ -17226,7 +17226,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       var doc = '<!doctype html><html><head><title>Cleaning audit report - ' + esc(audit.locationName || "") + '</title><style>' + css() + '</style></head><body>' +
         '<div class="page"><div class="cover"><div class="brand"><div><div class="eyebrow">Client cleaning audit report</div><h1>' + esc(audit.locationName || "Cleaning audit") + '</h1><div class="auditFor">Audit for: ' + esc(audit.locationName || "Client/site") + '</div></div>' + logoHtml + '</div>' +
         '<div class="coverGrid"><div class="meta"><div><b>Audit date</b>' + esc(audit.date || "") + '</div><div><b>Auditor</b>' + esc(audit.auditor || "") + '</div><div><b>Audit type</b>' + (type === "dental" ? "Healthcare / Dental" : "Commercial") + '</div><div><b>Standard basis</b>' + (type === "dental" ? "NHS-style FR/star rating" : "BICSc-aligned") + '</div></div>' +
-        '<div class="scoreHero"><div class="score">' + (calc.score === null ? "N/A" : calc.score + "%") + '</div><div class="label">' + esc(result) + '</div><div style="margin-top:8px">' + (type === "dental" ? starsText(calc.star) + " Â· blended target " + calc.target + "%" : "Commercial quality rating") + '</div></div></div></div>' +
+        '<div class="scoreHero"><div class="score">' + (calc.score === null ? "N/A" : calc.score + "%") + '</div><div class="label">' + esc(result) + '</div><div style="margin-top:8px">' + (type === "dental" ? starsText(calc.star) + " - blended target " + calc.target + "%" : "Commercial quality rating") + '</div></div></div></div>' +
         '<div class="grid three"><div class="card kpi"><h3>' + (type === "dental" ? "NHS-style audit score" : "Overall score") + '</h3><div class="big">' + (calc.score === null ? "N/A" : calc.score + "%") + '</div></div><div class="card kpi"><h3>Rating</h3><div class="big" style="font-size:23px">' + esc(result) + '</div></div><div class="card kpi"><h3>Actions raised</h3><div class="big">' + actionRows.length + '</div></div></div>' +
         '<div class="card summary" style="margin-top:14px"><h2>Executive summary</h2>' + summary + '</div>' +
         '<div class="card" style="margin-top:14px"><h2>Audit basis and score calculation</h2><p>' + esc(standard) + '</p><p><b>Score method:</b> ' + esc(calc.method) + '</p><p><b>Overall calculation:</b> ' + esc(calc.formula) + '</p><p><b>Representative sample:</b> this report reflects the areas and checklist elements sampled at the time of audit; it is not confirmation that every surface or item in the premises was checked.</p></div><div class="footer">Generated by Simplifying Cleaning Audit Manager.</div></div>' +
@@ -17381,7 +17381,7 @@ body.v69AuditCompact .tick{padding:7px 8px!important;font-size:12px!important}
 <script id="v70-dedupe-audit-lines">
 (function(){
   function cleanText(value){
-    return String(value || "").trim().toLowerCase().replace(/\s+/g," ").replace(/[â€“â€”]/g,"-").replace(/[^\w\s/&().-]/g,"");
+    return String(value || "").trim().toLowerCase().replace(/\s+/g," ").replace(/[--]/g,"-").replace(/[^\w\s/&().-]/g,"");
   }
 
   function keyFor(row){
@@ -17775,7 +17775,7 @@ body.v69AuditCompact .tick{padding:7px 8px!important;font-size:12px!important}
       .trim()
       .toLowerCase()
       .replace(/\s+/g, " ")
-      .replace(/[â€“â€”]/g, "-")
+      .replace(/[--]/g, "-")
       .replace(/[^\w\s/&().-]/g, "");
   }
 
@@ -18374,7 +18374,7 @@ body.v69AuditCompact .tick{padding:7px 8px!important;font-size:12px!important}
       .trim()
       .toLowerCase()
       .replace(/\s+/g, " ")
-      .replace(/[â€“â€”]/g, "-")
+      .replace(/[--]/g, "-")
       .replace(/[^\w\s/&().-]/g, "");
   }
 
@@ -18755,7 +18755,7 @@ body.v69AuditCompact .tick{padding:7px 8px!important;font-size:12px!important}
       .trim()
       .toLowerCase()
       .replace(/\s+/g, " ")
-      .replace(/[â€“â€”]/g, "-")
+      .replace(/[--]/g, "-")
       .replace(/[^\w\s/&().-]/g, "");
   }
 
@@ -19100,7 +19100,7 @@ body.v69AuditCompact .tick{padding:7px 8px!important;font-size:12px!important}
       .trim()
       .toLowerCase()
       .replace(/\s+/g, " ")
-      .replace(/[â€“â€”]/g, "-")
+      .replace(/[--]/g, "-")
       .replace(/[^\w\s/&().-]/g, "");
   }
 
@@ -19617,7 +19617,7 @@ body.v69AuditCompact .tick{padding:7px 8px!important;font-size:12px!important}
       .trim()
       .toLowerCase()
       .replace(/\s+/g, " ")
-      .replace(/[â€“â€”]/g, "-")
+      .replace(/[--]/g, "-")
       .replace(/[^\w\s/&().-]/g, "");
   }
 
@@ -20314,7 +20314,7 @@ body.v78SafeMobileAudit .v79FinalDedupeNotice{display:none!important}
       .trim()
       .toLowerCase()
       .replace(/\s+/g, " ")
-      .replace(/[â€“â€”]/g, "-")
+      .replace(/[--]/g, "-")
       .replace(/[^\w\s/&().-]/g, "");
   }
 
@@ -21646,7 +21646,7 @@ body.v123PhotoFix input[data-photo]{
 <script id="v123-real-upload-photo-fix">
 (function(){
   function norm(value){
-    return String(value || "").trim().toLowerCase().replace(/\s+/g, " ").replace(/[â€“â€”]/g, "-");
+    return String(value || "").trim().toLowerCase().replace(/\s+/g, " ").replace(/[--]/g, "-");
   }
 
   function text(value){
@@ -22329,7 +22329,7 @@ body.v123PhotoFix input[data-photo]{
   var selectedLocationId = "";
 
   function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
-  function norm(value){ return text(value).toLowerCase().replace(/\s+/g, " ").replace(/[â€“â€”]/g, "-"); }
+  function norm(value){ return text(value).toLowerCase().replace(/\s+/g, " ").replace(/[--]/g, "-"); }
   function esc(value){ return text(value).replace(/[&<>"']/g, function(ch){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]; }); }
   function clone(value){ return JSON.parse(JSON.stringify(value || null)); }
   function uidSafe(prefix){
@@ -22586,7 +22586,7 @@ body.v123PhotoFix input[data-photo]{
     var locations = getLocations();
     select.innerHTML = '<option value="">Select location</option>' + locations.map(function(loc){
       var name = loc.name || loc.siteName || loc.clientName || "Location";
-      return '<option value="' + esc(loc.id) + '">' + esc(name) + ' (' + esc(loc.type || "location") + ') â€” ' + ((loc.rooms || []).length) + ' rooms</option>';
+      return '<option value="' + esc(loc.id) + '">' + esc(name) + ' (' + esc(loc.type || "location") + ') - ' + ((loc.rooms || []).length) + ' rooms</option>';
     }).join("");
     if (locations.some(function(loc){ return String(loc.id) === String(previous); })) select.value = previous;
     selectedLocationId = select.value;
