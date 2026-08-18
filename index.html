@@ -1881,7 +1881,14 @@ function importBackup(file) {
       if (!parsed.locations || !parsed.audits || !parsed.actions) throw new Error("Invalid backup");
       state = parsed;
       saveState();
-      alert("Backup imported.");
+      if (typeof renderAll === "function") renderAll();
+      else {
+        try { if (typeof renderDashboard === "function") renderDashboard(); } catch(e) {}
+        try { if (typeof renderLocations === "function") renderLocations(); } catch(e) {}
+        try { if (typeof renderHistory === "function") renderHistory(); } catch(e) {}
+        try { if (typeof renderActions === "function") renderActions(); } catch(e) {}
+      }
+      alert("Backup imported. Locations and saved audits have been restored on this device.");
     } catch (e) {
       alert("Could not import backup.");
     }
@@ -24989,6 +24996,15 @@ body.v123PhotoFix input[data-photo]{
       actions:(s.actions || []).length
     };
   }
+  function countBackupState(value){
+    var s = value && value.state ? value.state : value;
+    s = s && typeof s === "object" ? s : {};
+    return {
+      locations:Array.isArray(s.locations) ? s.locations.length : 0,
+      audits:Array.isArray(s.audits) ? s.audits.length : 0,
+      actions:Array.isArray(s.actions) ? s.actions.length : 0
+    };
+  }
   function status(message){
     var el = E("v183CloudStatus");
     if (el) el.textContent = message;
@@ -25920,6 +25936,7 @@ body.v123PhotoFix input[data-photo]{
       if (el) {
         el.style.display = "none";
         el.setAttribute("hidden", "hidden");
+        try { el.remove(); } catch(e) {}
       }
     });
   }
@@ -25945,6 +25962,7 @@ body.v123PhotoFix input[data-photo]{
       'button.danger{background:#b91c1c;color:#fff}' +
       'button.min{height:32px;background:#f8fafc;color:#0f172a;border:1px solid #cbd5e1}' +
       '#openApp{display:none}' +
+      '.box.appHidden{display:none}' +
       '.box.closed .grid,.box.closed .status{display:none}' +
       '.box.login .top,.box.login .grid{width:min(420px,100%);box-sizing:border-box}' +
       '.box.login .top{display:block;margin:0;text-align:left}' +
@@ -25977,6 +25995,7 @@ body.v123PhotoFix input[data-photo]{
     function status(message){ statusEl.textContent = message; }
     function showAuthGate(user){
       lockAppUntilSignedIn();
+      box.classList.remove("appHidden");
       box.classList.add("login");
       box.classList.remove("closed");
       if (user) {
@@ -25996,6 +26015,7 @@ body.v123PhotoFix input[data-photo]{
     function openAuditSystem(){
       box.classList.remove("login");
       box.classList.remove("closed");
+      box.classList.add("appHidden");
       emailEl.style.display = "";
       loginBtn.style.display = "";
       openAppBtn.style.display = "none";
@@ -26052,6 +26072,24 @@ body.v123PhotoFix input[data-photo]{
         var user = await currentUser();
         if (!user) return alert("Please sign in first using the email link.");
         var sb = await getClient();
+        var localCounts = counts();
+        if (!localCounts.locations && !localCounts.audits && !localCounts.actions) {
+          status("Save blocked: there is no local audit data to save online.");
+          return alert("No data is showing in this browser, so I have blocked Save online to avoid overwriting your online backup with an empty system.");
+        }
+        var existing = await sb.from("audit_backups")
+          .select("backup_data,created_at")
+          .eq("backup_name", CLOUD_BACKUP_NAME)
+          .order("created_at", {ascending:false})
+          .limit(1);
+        if (existing.error) throw existing.error;
+        if (existing.data && existing.data.length) {
+          var onlineCounts = countBackupState(existing.data[0].backup_data || {});
+          if (onlineCounts.audits > localCounts.audits && !confirm("The online backup has more saved audits (" + onlineCounts.audits + ") than this browser (" + localCounts.audits + "). Save this browser online anyway?")) {
+            status("Save online cancelled to protect the larger online backup.");
+            return;
+          }
+        }
         var payload = {
           saved_at: new Date().toISOString(),
           app_version: "v178-v187-isolated-online-database-box",
@@ -26146,6 +26184,44 @@ body.v123PhotoFix input[data-photo]{
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", applySlickUi);
   else applySlickUi();
+})();
+</script>
+
+<script id="v189-recovery-guidance">
+(function(){
+  function getStateCounts(){
+    var s = {};
+    try { s = state || {}; } catch(e) {}
+    return {
+      locations:Array.isArray(s.locations) ? s.locations.length : 0,
+      audits:Array.isArray(s.audits) ? s.audits.length : 0,
+      actions:Array.isArray(s.actions) ? s.actions.length : 0
+    };
+  }
+  function installRecoveryCard(){
+    var backup = document.getElementById("backup");
+    if (!backup || document.getElementById("v189RecoveryCard")) return;
+    var counts = getStateCounts();
+    if (counts.locations || counts.audits) return;
+    var card = document.createElement("div");
+    card.id = "v189RecoveryCard";
+    card.className = "card noPrint";
+    card.innerHTML =
+      '<h2>Restore saved audits</h2>' +
+      '<p class="help">Old saved data needs to be imported once, then saved online.</p>' +
+      '<div class="list"><strong>Recovered backup file</strong><div class="help">C:\\\\Users\\\\simpl\\\\Downloads\\\\recovered-old-audit-data-combined.json</div></div>' +
+      '<div class="actions"><button type="button" class="secondary" id="v189ChooseBackup">Import recovered backup</button></div>';
+    backup.insertBefore(card, backup.firstChild);
+    var button = document.getElementById("v189ChooseBackup");
+    if (button) {
+      button.addEventListener("click", function(){
+        var input = document.getElementById("importBackup");
+        if (input) input.click();
+      });
+    }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(installRecoveryCard, 500); });
+  else setTimeout(installRecoveryCard, 500);
 })();
 </script>
 
