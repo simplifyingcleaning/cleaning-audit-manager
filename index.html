@@ -24536,6 +24536,7 @@ body.v123PhotoFix input[data-photo]{
   var SUPABASE_URL = "https://nllvgkrflfqtnfbahvwb.supabase.co";
   var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sbHZna3JmbGZxdG5mYmFodndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNDUwMDQsImV4cCI6MjEwMjYyMTAwNH0.mMXpE0viRy6Eomii9upP6_2BplokYmTX9zpwo7on4p0";
   var CLOUD_BACKUP_NAME = "live_audit_system_state";
+  var HOSTED_APP_URL = "https://simplifyingcleaning.github.io/cleaning-audit-manager/";
   var client = null;
   var saving = false;
   var pendingSave = false;
@@ -24600,9 +24601,36 @@ body.v123PhotoFix input[data-photo]{
     if (client) return client;
     await loadSupabaseScript();
     client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth:{ persistSession:true, autoRefreshToken:true }
+      auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, flowType:"pkce" }
     });
     return client;
+  }
+  async function handleLoginReturn(){
+    var sb = await getClient();
+    var search = new URLSearchParams(window.location.search || "");
+    var hash = new URLSearchParams(String(window.location.hash || "").replace(/^#/, ""));
+    var code = search.get("code");
+    var accessToken = hash.get("access_token");
+    var refreshToken = hash.get("refresh_token");
+    var handled = false;
+
+    if (code) {
+      var exchanged = await sb.auth.exchangeCodeForSession(code);
+      if (exchanged.error) throw exchanged.error;
+      handled = true;
+    } else if (accessToken) {
+      var session = await sb.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken || ""
+      });
+      if (session.error) throw session.error;
+      handled = true;
+    }
+
+    if (handled && window.history && window.history.replaceState) {
+      window.history.replaceState(null, document.title, window.location.origin + window.location.pathname);
+    }
+    return handled;
   }
   async function currentUser(){
     var sb = await getClient();
@@ -25366,6 +25394,7 @@ body.v123PhotoFix input[data-photo]{
   var SUPABASE_URL = "https://nllvgkrflfqtnfbahvwb.supabase.co";
   var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sbHZna3JmbGZxdG5mYmFodndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNDUwMDQsImV4cCI6MjEwMjYyMTAwNH0.mMXpE0viRy6Eomii9upP6_2BplokYmTX9zpwo7on4p0";
   var CLOUD_BACKUP_NAME = "live_audit_system_state";
+  var HOSTED_APP_URL = "https://simplifyingcleaning.github.io/cleaning-audit-manager/";
   var client = null;
 
   function appState(){
@@ -25450,6 +25479,7 @@ body.v123PhotoFix input[data-photo]{
       '<style>' +
       ':host{all:initial}' +
       '.box{position:fixed;left:16px;right:16px;bottom:16px;z-index:2147483647;background:#f0fdfa;border:2px solid #14b8a6;border-radius:10px;padding:12px;box-shadow:0 18px 44px rgba(15,23,42,.28);font-family:Arial,Helvetica,sans-serif;color:#134e4a}' +
+      '.box.login{inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border:0;border-radius:0;background:linear-gradient(135deg,#f8fafc 0%,#ecfeff 52%,#f0fdfa 100%);box-shadow:none;padding:24px}' +
       '.top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px}' +
       'strong{display:block;font-size:16px;color:#134e4a}' +
       '.status{font-size:13px;line-height:1.35;color:#0f766e;margin-top:3px}' +
@@ -25460,9 +25490,15 @@ body.v123PhotoFix input[data-photo]{
       'button.danger{background:#b91c1c;color:#fff}' +
       'button.min{height:32px;background:#ccfbf1;color:#134e4a;border:1px solid #5eead4}' +
       '.box.closed .grid,.box.closed .status{display:none}' +
+      '.box.login .top,.box.login .grid{width:min(420px,100%);box-sizing:border-box}' +
+      '.box.login .top{display:block;margin:0;text-align:left}' +
+      '.box.login strong{font-size:28px;color:#0f172a}' +
+      '.box.login .status{font-size:15px;color:#334155;margin-top:8px}' +
+      '.box.login .grid{display:grid;grid-template-columns:1fr;gap:10px;background:#fff;border:1px solid #ccfbf1;border-radius:12px;padding:14px;box-shadow:0 18px 48px rgba(15,23,42,.12)}' +
+      '.box.login #toggle,.box.login #save,.box.login #load,.box.login #out{display:none}' +
       '@media(max-width:760px){.box{left:8px;right:8px;bottom:8px}.grid{grid-template-columns:1fr}button,input{width:100%}}' +
       '</style>' +
-      '<div class="box">' +
+      '<div class="box login">' +
         '<div class="top"><div><strong>Online database</strong><div class="status" id="status">Type your email, then press Email login link.</div></div><button class="min" id="toggle" type="button">Hide</button></div>' +
         '<div class="grid">' +
           '<input id="email" type="email" autocomplete="email" placeholder="Your email address">' +
@@ -25477,11 +25513,19 @@ body.v123PhotoFix input[data-photo]{
     var statusEl = root.getElementById ? root.getElementById("status") : root.querySelector("#status");
     var emailEl = root.getElementById ? root.getElementById("email") : root.querySelector("#email");
     function status(message){ statusEl.textContent = message; }
+    function setLoginScreen(isLoggedOut){
+      box.classList.toggle("login", !!isLoggedOut);
+      if (isLoggedOut) box.classList.remove("closed");
+    }
     function updateStatus(){
       currentUser().then(function(user){
         var c = counts();
+        setLoginScreen(!user);
         status(user ? "Signed in. Data here: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)." : "Not signed in yet. Type your email and press Email login link.");
-      }).catch(function(){ status("Online database ready. Type your email and press Email login link."); });
+      }).catch(function(){
+        setLoginScreen(true);
+        status("Online database ready. Type your email and press Email login link.");
+      });
     }
     root.querySelector("#toggle").addEventListener("click", function(){
       box.classList.toggle("closed");
@@ -25495,7 +25539,7 @@ body.v123PhotoFix input[data-photo]{
         status("Sending login email...");
         var res = await sb.auth.signInWithOtp({
           email: email,
-          options:{ emailRedirectTo: window.location.href.split("#")[0] }
+          options:{ emailRedirectTo: window.location.protocol === "file:" ? HOSTED_APP_URL : window.location.origin + window.location.pathname }
         });
         if (res.error) throw res.error;
         status("Login email sent. Open the email link, then come back here.");
@@ -25562,7 +25606,13 @@ body.v123PhotoFix input[data-photo]{
     });
     getClient().then(function(sb){
       sb.auth.onAuthStateChange(function(){ updateStatus(); });
-      updateStatus();
+      status("Checking online login...");
+      handleLoginReturn().then(function(handled){
+        if (handled) status("Signed in. You can now Save online or Load online.");
+        updateStatus();
+      }).catch(function(error){
+        status("Login link opened, but sign in failed: " + (error.message || error));
+      });
     }).catch(function(error){ status(error.message || String(error)); });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install);
