@@ -24999,7 +24999,10 @@ body.v123PhotoFix input[data-photo]{
     try {
       var key = typeof KEY !== "undefined" ? KEY : "simplifying_cleaning_v11_stable";
       localStorage.setItem(key, JSON.stringify(next));
-    } catch(e) {}
+      return true;
+    } catch(e) {
+      throw new Error("Loaded data could not be saved on this device: " + (e && e.message ? e.message : e));
+    }
   }
   function counts(){
     var s = appState();
@@ -26213,6 +26216,10 @@ body.v123PhotoFix input[data-photo]{
           state: appState()
         };
         status("Saving online...");
+        var removeOld = await sb.from("audit_backups")
+          .delete()
+          .eq("backup_name", CLOUD_BACKUP_NAME);
+        if (removeOld.error) throw removeOld.error;
         var res = await sb.from("audit_backups").insert({
           user_id:user.id,
           backup_name:CLOUD_BACKUP_NAME,
