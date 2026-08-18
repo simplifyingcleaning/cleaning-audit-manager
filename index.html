@@ -25397,6 +25397,23 @@ body.v123PhotoFix input[data-photo]{
   var HOSTED_APP_URL = "https://simplifyingcleaning.github.io/cleaning-audit-manager/";
   var client = null;
 
+  function installAuthLockStyle(){
+    if (!document.getElementById("v187AuthLockStyle")) {
+      var style = document.createElement("style");
+      style.id = "v187AuthLockStyle";
+      style.textContent = "body.v187AuthLocked > :not(#v187CloudHost){display:none!important}";
+      document.head.appendChild(style);
+    }
+  }
+  function lockAppUntilSignedIn(){
+    installAuthLockStyle();
+    if (document.body) document.body.classList.add("v187AuthLocked");
+  }
+  function unlockAppAfterSignIn(){
+    if (document.body) document.body.classList.remove("v187AuthLocked");
+  }
+  lockAppUntilSignedIn();
+
   function appState(){
     try { return state || {locations:[],audits:[],actions:[],settings:{}}; }
     catch(e) { return {locations:[],audits:[],actions:[],settings:{}}; }
@@ -25515,7 +25532,12 @@ body.v123PhotoFix input[data-photo]{
     function status(message){ statusEl.textContent = message; }
     function setLoginScreen(isLoggedOut){
       box.classList.toggle("login", !!isLoggedOut);
-      if (isLoggedOut) box.classList.remove("closed");
+      if (isLoggedOut) {
+        lockAppUntilSignedIn();
+        box.classList.remove("closed");
+      } else {
+        unlockAppAfterSignIn();
+      }
     }
     function updateStatus(){
       currentUser().then(function(user){
