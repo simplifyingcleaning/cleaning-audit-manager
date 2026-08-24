@@ -25012,6 +25012,15 @@ body.v123PhotoFix input[data-photo]{
       actions:(s.actions || []).length
     };
   }
+  function backupCountsFrom(value){
+    var s = value && value.state ? value.state : value;
+    s = s && typeof s === "object" ? s : {};
+    return {
+      locations:Array.isArray(s.locations) ? s.locations.length : 0,
+      audits:Array.isArray(s.audits) ? s.audits.length : 0,
+      actions:Array.isArray(s.actions) ? s.actions.length : 0
+    };
+  }
   function countBackupState(value){
     var s = value && value.state ? value.state : value;
     s = s && typeof s === "object" ? s : {};
@@ -26104,6 +26113,11 @@ body.v123PhotoFix input[data-photo]{
       loadBtn.style.display = "";
       unlockAppAfterSignIn();
       updateStatus();
+      setTimeout(function(){
+        autoLoadOnlineIfUseful().catch(function(error){
+          status("Signed in, but online data could not be checked: " + (error && error.message ? error.message : error));
+        });
+      }, 300);
     }
     function updateStatus(){
       currentUser().then(function(user){
@@ -26210,6 +26224,38 @@ body.v123PhotoFix input[data-photo]{
       }
       openAuditSystem();
     });
+    async function latestOnlineBackup(sb){
+      var res = await sb.from("audit_backups")
+        .select("backup_data,created_at")
+        .eq("backup_name", CLOUD_BACKUP_NAME)
+        .order("created_at", {ascending:false})
+        .limit(1);
+      if (res.error) throw res.error;
+      if (!res.data || !res.data.length) return null;
+      return res.data[0].backup_data || {};
+    }
+    async function autoLoadOnlineIfUseful(){
+      var user = await currentUser();
+      if (!user) return;
+      var sb = await getClient();
+      var backup = await latestOnlineBackup(sb);
+      if (!backup) {
+        status("Signed in. No online backup has been saved yet.");
+        return;
+      }
+      var local = counts();
+      var online = backupCountsFrom(backup);
+      var deviceIsEmpty = !local.locations && !local.audits && !local.actions;
+      var onlineLooksNewer = online.audits > local.audits || online.locations > local.locations || online.actions > local.actions;
+      if (!deviceIsEmpty && !onlineLooksNewer) {
+        status("Signed in. This device already has the latest saved audit data.");
+        return;
+      }
+      setAppState(backup.state || backup);
+      refreshApp();
+      var c = counts();
+      status("Loaded latest online data: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s).");
+    }
     async function saveOnlineNow(){
       try {
         var user = await currentUser();
@@ -26264,24 +26310,22 @@ body.v123PhotoFix input[data-photo]{
         throw error;
       }
     }
-    async function loadOnlineNow(){
+    async function loadOnlineNow(options){
       try {
+        options = options || {};
         var user = await currentUser();
-        if (!user) return alert("Please sign in first using your email and password.");
-        if (!confirm("Load latest online data onto this device?")) return;
+        if (!user) {
+          if (!options.silent) alert("Please sign in first using your email and password.");
+          return;
+        }
+        if (!options.silent && !confirm("Load latest online data onto this device?")) return;
         var sb = await getClient();
         status("Loading online data...");
-        var res = await sb.from("audit_backups")
-          .select("backup_data,created_at")
-          .eq("backup_name", CLOUD_BACKUP_NAME)
-          .order("created_at", {ascending:false})
-          .limit(1);
-        if (res.error) throw res.error;
-        if (!res.data || !res.data.length) {
+        var backup = await latestOnlineBackup(sb);
+        if (!backup) {
           status("No online data found yet. Press Save online first on the device with your audits.");
           return;
         }
-        var backup = res.data[0].backup_data || {};
         setAppState(backup.state || backup);
         refreshApp();
         var c = counts();
@@ -26357,7 +26401,7 @@ body.v123PhotoFix input[data-photo]{
       if (labels[tab]) btn.textContent = labels[tab];
     });
     var headerTitle = document.querySelector("header h1");
-    if (headerTitle) headerTitle.textContent = "Audit Manager - Online Fix 18 Aug v2";
+    if (headerTitle) headerTitle.textContent = "Audit Manager - Online Sync Fix 24 Aug v3";
     document.querySelectorAll(".wrap > .notice").forEach(function(el){
       el.setAttribute("hidden", "hidden");
     });
