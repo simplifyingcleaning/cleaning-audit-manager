@@ -27273,6 +27273,7 @@ body:not(.v187AuthLocked) #v187CloudHost{
       if (!statusInfo.row || !statusInfo.card) return;
       statusInfo.row.status = target.dataset.v191Status;
       statusInfo.card.querySelectorAll("[data-v191-status]").forEach(function(button){ button.classList.toggle("active", button === target); });
+      render(statusInfo.row.id);
       return;
     }
     if (target.dataset && target.dataset.v191Obs !== undefined) {
@@ -27337,6 +27338,235 @@ body:not(.v187AuthLocked) #v187CloudHost{
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install);
   else install();
   setTimeout(install, 500);
+})();
+</script>
+
+<style id="v192-phone-first-layout">
+@media(max-width:760px){
+  html{
+    -webkit-text-size-adjust:100%;
+  }
+  body{
+    background:#f5f7fa!important;
+    padding-bottom:78px!important;
+    font-size:15px!important;
+  }
+  header{
+    position:sticky!important;
+    top:0!important;
+    z-index:45!important;
+    padding:8px 10px!important;
+    background:#ffffff!important;
+    color:#101828!important;
+    border-bottom:1px solid #e2e8f0!important;
+    box-shadow:0 4px 14px rgba(15,23,42,.06)!important;
+  }
+  header .head{
+    gap:8px!important;
+    flex-wrap:nowrap!important;
+  }
+  header img{
+    height:32px!important;
+    max-width:150px!important;
+    object-fit:contain!important;
+    padding:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+  }
+  header h1{
+    font-size:16px!important;
+    line-height:1.15!important;
+    margin:0!important;
+    color:#101828!important;
+  }
+  header p{
+    display:none!important;
+  }
+  .wrap{
+    padding:10px!important;
+    max-width:none!important;
+  }
+  .tabs{
+    position:fixed!important;
+    left:0!important;
+    right:0!important;
+    bottom:0!important;
+    z-index:100!important;
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    gap:4px!important;
+    overflow-x:auto!important;
+    margin:0!important;
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom))!important;
+    background:#ffffff!important;
+    border-top:1px solid #dbe4ec!important;
+    box-shadow:0 -8px 20px rgba(15,23,42,.12)!important;
+    scrollbar-width:none!important;
+  }
+  .tabs::-webkit-scrollbar{
+    display:none!important;
+  }
+  .tabBtn{
+    flex:0 0 auto!important;
+    min-width:74px!important;
+    min-height:48px!important;
+    border-radius:8px!important;
+    padding:6px 9px!important;
+    font-size:12px!important;
+    line-height:1.1!important;
+    box-shadow:none!important;
+  }
+  .tabBtn.active{
+    background:#0f766e!important;
+    border-color:#0f766e!important;
+    color:#fff!important;
+  }
+  .card{
+    border-radius:8px!important;
+    padding:12px!important;
+    margin-bottom:10px!important;
+    box-shadow:none!important;
+  }
+  h2{
+    font-size:20px!important;
+    margin:0 0 10px!important;
+  }
+  #dashboard .grid,
+  #locations .grid,
+  #newAudit .grid,
+  #history .grid,
+  #actions .grid,
+  #periodic .grid,
+  .grid.two,
+  .grid.three,
+  .grid.four{
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+  }
+  #dashboard .card p,
+  #dashboard .help,
+  #newAudit .help,
+  #newAudit .muted,
+  #newAudit small,
+  #newAudit .small,
+  #newAudit .v177PhotoHint,
+  #newAudit .v177SuggestionTitle{
+    display:none!important;
+  }
+  #v162CreateAuditCard{
+    padding-bottom:10px!important;
+  }
+  #v162CreateAuditCard select,
+  #v162CreateAuditCard input,
+  #v162CreateAuditCard textarea{
+    min-height:46px!important;
+    border-radius:8px!important;
+    font-size:16px!important;
+  }
+  #v162CreateAuditCard textarea{
+    min-height:58px!important;
+  }
+  #v162CreateAuditCard .actions button{
+    min-height:46px!important;
+    border-radius:8px!important;
+  }
+  #v162AddCustomLine,
+  #v162AddStandaloneAction{
+    display:none!important;
+  }
+  #v162AuditTools{
+    margin:0 0 8px!important;
+    padding:8px!important;
+  }
+  .v162MobileAuditTools > label{
+    display:none!important;
+  }
+  .v162AreaTabs button{
+    min-height:40px!important;
+    padding:7px 11px!important;
+    font-size:13px!important;
+  }
+  .v162RoomTools summary{
+    min-height:34px!important;
+    font-size:13px!important;
+  }
+  #v191SaveAudit{
+    margin-top:8px!important;
+  }
+  .v191AuditCard{
+    padding:10px!important;
+    margin-bottom:8px!important;
+  }
+  .v191Element{
+    font-size:14px!important;
+  }
+  .v191StatusSet{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:6px!important;
+  }
+  .v191StatusSet button{
+    min-height:44px!important;
+    font-size:13px!important;
+  }
+  .v191Grid{
+    gap:7px!important;
+  }
+  .v191Field textarea{
+    min-height:58px!important;
+  }
+  .v191Field input,
+  .v191Field textarea{
+    font-size:16px!important;
+  }
+  .v191Chips button,
+  .v191PhotoButton,
+  .v191RemovePhoto{
+    min-height:36px!important;
+    padding:7px 10px!important;
+  }
+  .v191PhotoGrid{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  .v191PhotoGrid img{
+    height:68px!important;
+  }
+  #v177WorkflowBar{
+    display:none!important;
+  }
+  #v187CloudHost{
+    display:none!important;
+  }
+  body.v187AuthLocked #v187CloudHost{
+    display:block!important;
+  }
+}
+</style>
+
+<script id="v192-phone-first-layout-script">
+(function(){
+  function applyPhoneLabels(){
+    var labels = {
+      dashboard:"Home",
+      locations:"Sites",
+      newAudit:"Audit",
+      history:"History",
+      actions:"Actions",
+      periodic:"Reports",
+      backup:"Backup"
+    };
+    document.querySelectorAll(".tabBtn[data-tab]").forEach(function(button){
+      var tab = button.getAttribute("data-tab");
+      if (labels[tab]) button.textContent = labels[tab];
+    });
+    var headerTitle = document.querySelector("header h1");
+    if (headerTitle) headerTitle.textContent = "Audit Manager - Phone Optimised 25 Aug v10";
+    document.querySelectorAll("#newAudit .notice,#newAudit [class*='Notice'],#newAudit [id*='Notice'],#newAudit [class*='notice'],#newAudit [id*='notice']").forEach(function(el){
+      el.style.display = "none";
+    });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", applyPhoneLabels);
+  else applyPhoneLabels();
+  setTimeout(applyPhoneLabels, 500);
 })();
 </script>
 
