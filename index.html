@@ -27972,5 +27972,174 @@ body:not(.v187AuthLocked) #v187CloudHost{
 })();
 </script>
 
+<style id="v195-real-audit-declutter-style">
+#v194AuditQuickBar{
+  display:none!important;
+}
+#newAudit > .grid.two{
+  display:block!important;
+}
+#newAudit .v195QuickBar{
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  margin:0 0 10px;
+  padding:2px 0 8px;
+  scrollbar-width:none;
+}
+#newAudit .v195QuickBar::-webkit-scrollbar{
+  display:none;
+}
+#newAudit .v195QuickBar button{
+  flex:0 0 auto;
+  min-height:42px;
+  border:1px solid #cbd5e1;
+  border-radius:999px;
+  background:#fff;
+  color:#172033;
+  padding:8px 12px;
+  font-size:13px;
+  font-weight:900;
+}
+#newAudit .v195QuickBar button.active{
+  background:#0f766e;
+  border-color:#0f766e;
+  color:#fff;
+}
+#newAudit .v195AuxCard,
+#newAudit .v195SummaryWrap,
+#newAudit #v162AuditTools{
+  display:none!important;
+}
+body.v195ShowCarry #newAudit .v195CarryCard,
+body.v195ShowSafety #newAudit .v195SafetyCard,
+body.v195ShowActions #newAudit .v195ActionsCard,
+body.v195ShowSummary #newAudit .v195SummaryWrap,
+body.v195ShowRooms #newAudit #v162AuditTools{
+  display:block!important;
+}
+#newAudit .v195AuditChecklistCard{
+  padding-top:12px!important;
+}
+#newAudit .v195AuditChecklistCard > h2{
+  display:none!important;
+}
+#newAudit .v195AuxCard{
+  border-radius:8px!important;
+  box-shadow:none!important;
+}
+#newAudit .v195AuxCard h2{
+  font-size:18px!important;
+  margin-bottom:8px!important;
+}
+#newAudit #v162AddCustomLine,
+#newAudit #v162AddStandaloneAction{
+  display:none!important;
+}
+@media(max-width:760px){
+  #newAudit .v195QuickBar{
+    position:sticky;
+    top:49px;
+    z-index:44;
+    background:#f5f7fa;
+    margin-left:-10px;
+    margin-right:-10px;
+    padding:8px 10px;
+    border-bottom:1px solid #e2e8f0;
+  }
+  #newAudit .v195QuickBar button{
+    min-height:40px;
+    padding:7px 11px;
+  }
+  body.v195ShowRooms.v193AuditActive{
+    padding-bottom:148px!important;
+  }
+}
+</style>
+
+<script id="v195-real-audit-declutter">
+(function(){
+  function E(id){ return document.getElementById(id); }
+  function rows(){ try { return Array.isArray(draftRows) ? draftRows : []; } catch(e) { return []; } }
+  function markCards(){
+    var carry = E("carryForward");
+    var safety = E("hsChecks");
+    var actions = E("auditActions");
+    var auditRows = E("auditRows");
+    if (carry && carry.closest) carry.closest(".card").classList.add("v195AuxCard","v195CarryCard");
+    if (safety && safety.closest) safety.closest(".card").classList.add("v195AuxCard","v195SafetyCard");
+    if (actions && actions.closest) actions.closest(".card").classList.add("v195AuxCard","v195ActionsCard");
+    if (auditRows && auditRows.closest) auditRows.closest(".card").classList.add("v195AuditChecklistCard");
+    var summary = E("v162Summary") || E("auditSummary");
+    if (summary && summary.closest) summary.closest("div").classList.add("v195SummaryWrap");
+  }
+  function ensureBar(){
+    var panel = E("newAudit");
+    var auditRows = E("auditRows");
+    if (!panel || !auditRows || !auditRows.parentNode) return null;
+    var bar = E("v195QuickBar");
+    if (bar) return bar;
+    bar = document.createElement("div");
+    bar.id = "v195QuickBar";
+    bar.className = "v195QuickBar";
+    bar.innerHTML =
+      '<button type="button" data-v195-toggle="Carry">Previous actions</button>' +
+      '<button type="button" data-v195-toggle="Summary">Summary</button>' +
+      '<button type="button" data-v195-toggle="Safety">Safety</button>' +
+      '<button type="button" data-v195-toggle="Actions">Actions</button>' +
+      '<button type="button" data-v195-toggle="Rooms">Rooms</button>' +
+      '<button type="button" data-v195-click="v162AddCustomLine">Add line</button>' +
+      '<button type="button" data-v195-click="v162AddStandaloneAction">Add action</button>';
+    auditRows.parentNode.insertBefore(bar, auditRows);
+    return bar;
+  }
+  function sync(){
+    markCards();
+    var bar = ensureBar();
+    if (!bar) return;
+    ["Carry","Summary","Safety","Actions","Rooms"].forEach(function(name){
+      var button = bar.querySelector('[data-v195-toggle="' + name + '"]');
+      if (button) button.classList.toggle("active", document.body.classList.contains("v195Show" + name));
+    });
+    document.body.classList.toggle("v195AuditLoaded", rows().length > 0);
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Decluttered Audit Form 25 Aug v13";
+  }
+  document.addEventListener("click", function(event){
+    var target = event.target;
+    if (!target) return;
+    var toggle = target.getAttribute && target.getAttribute("data-v195-toggle");
+    if (toggle) {
+      event.preventDefault();
+      document.body.classList.toggle("v195Show" + toggle);
+      sync();
+      var panel = document.querySelector(".v195" + toggle + "Card") || (toggle === "Summary" ? document.querySelector(".v195SummaryWrap") : null) || (toggle === "Rooms" ? E("v162AuditTools") : null);
+      if (panel && document.body.classList.contains("v195Show" + toggle)) panel.scrollIntoView({ block:"nearest" });
+      return;
+    }
+    var clickId = target.getAttribute && target.getAttribute("data-v195-click");
+    if (clickId) {
+      event.preventDefault();
+      var real = E(clickId);
+      if (real) real.click();
+      return;
+    }
+    if (target.closest && target.closest(".tabBtn")) setTimeout(sync, 120);
+    if (target.id === "v162LoadAudit" || target.id === "loadAudit") setTimeout(sync, 180);
+  }, true);
+  var previousRender = window.renderAuditRows;
+  window.renderAuditRows = function(){
+    var result;
+    try { if (typeof previousRender === "function") result = previousRender.apply(this, arguments); } catch(e) {}
+    setTimeout(sync, 80);
+    return result;
+  };
+  try { renderAuditRows = window.renderAuditRows; } catch(e) {}
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", sync);
+  else sync();
+  setTimeout(sync, 500);
+})();
+</script>
+
 </body>
 </html>
