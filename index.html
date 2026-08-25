@@ -28230,7 +28230,7 @@ body.v196AuditActive #v196AuditDock{
 }
 body.v197ShowRoomTools .v197RoomDrawer{
   display:grid;
-  grid-template-columns:1fr 1fr;
+  grid-template-columns:1fr 1.2fr;
   gap:8px;
 }
 .v197RoomDrawer label{
@@ -28248,6 +28248,16 @@ body.v197ShowRoomTools .v197RoomDrawer{
   padding:7px 9px;
   box-sizing:border-box;
   font-size:15px;
+}
+.v197RoomDrawer select{
+  width:100%;
+  min-height:40px;
+  border:1px solid #cbd5e1;
+  border-radius:8px;
+  padding:7px 9px;
+  box-sizing:border-box;
+  font-size:15px;
+  background:#fff;
 }
 .v197RoomDrawer button{
   width:100%;
@@ -28357,10 +28367,10 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     if (drawer) {
       drawer.innerHTML =
         '<div><label>Rename selected room</label><input id="v197RenameRoom" type="text" value="' + esc(current || "") + '"><button type="button" id="v197RenameRoomBtn">Rename room</button></div>' +
-        '<div><label>Add room</label><input id="v197NewRoom" type="text" placeholder="Room name"><button type="button" id="v197AddRoomBtn">Add room</button></div>';
+        '<div><label>Add room</label><input id="v197NewRoom" type="text" placeholder="Room name"><label style="margin-top:6px">Room type</label><select id="v197RoomType">' + roomTypeOptions() + '</select><button type="button" id="v197AddRoomBtn">Add room</button></div>';
     }
     var title = document.querySelector("header h1");
-    if (title) title.textContent = "Audit Manager - Room Tools Fixed 25 Aug v15";
+    if (title) title.textContent = "Audit Manager - Room Type Add 25 Aug v16";
   }
   function templateForRoom(loc, roomName){
     try {
@@ -28370,14 +28380,38 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       return [];
     }
   }
+  function roomTypeOptions(){
+    var loc = currentLocation();
+    var healthcare = loc && isHealthcare(loc.type);
+    var base = healthcare
+      ? ["Reception","Waiting room","Surgery / clinical","Decon / treatment","Toilet / washroom","Corridor","Stairs / landing","Staff room / kitchen","Office / admin","Cleaning cupboard"]
+      : ["Entrance","Reception","Office","Meeting room","Kitchen / breakout","Toilet / washroom","Corridor","Stairs / landing","Cleaning cupboard","General"];
+    return base.map(function(name){ return '<option value="' + esc(name) + '">' + esc(name) + '</option>'; }).join("");
+  }
+  function roomTemplateName(type){
+    var value = norm(type);
+    if (/surgery|clinical|decon|treatment/.test(value)) return "Surgery";
+    if (/waiting/.test(value)) return "Waiting room";
+    if (/reception/.test(value)) return "Reception";
+    if (/toilet|washroom|wc/.test(value)) return "Toilet";
+    if (/corridor/.test(value)) return "Corridor";
+    if (/stair|landing/.test(value)) return "Stairs";
+    if (/staff|kitchen|breakout/.test(value)) return "Staff room";
+    if (/office|admin/.test(value)) return "Office";
+    if (/meeting/.test(value)) return "Meeting room";
+    if (/entrance/.test(value)) return "Entrance";
+    if (/cleaning|cupboard|store/.test(value)) return "Cleaning cupboard";
+    return "General";
+  }
   function metObservation(){
     try { if (typeof obsPresets !== "undefined" && obsPresets.Met) return String(obsPresets.Met).replace(/\bauto[\s-]*filled\b/gi, "").trim(); } catch(e) {}
     return "Standard met at the time of audit.";
   }
-  function addRoom(name){
+  function addRoom(name, roomType){
     var loc = currentLocation();
     var fr = loc && isHealthcare(loc.type) ? "FR4" : "";
-    var newRows = templateForRoom(loc, name).map(function(element){
+    var templateName = roomTemplateName(roomType || name);
+    var newRows = templateForRoom(loc, templateName).map(function(element){
       return { id:uid("row"), area:name, fr:fr, element:element, status:"Met", observation:metObservation(), actionText:"", owner:"", targetDate:"", photos:[] };
     });
     if (!newRows.length) return alert("Could not create room checklist.");
@@ -28445,9 +28479,10 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       event.preventDefault();
       event.stopImmediatePropagation();
       var addInput = E("v197NewRoom");
+      var typeInput = E("v197RoomType");
       var name = text(addInput && addInput.value);
       if (!name) return alert("Enter a room name.");
-      addRoom(name);
+      addRoom(name, text(typeInput && typeInput.value));
       return;
     }
     if (target.id === "v197RenameRoomBtn") {
