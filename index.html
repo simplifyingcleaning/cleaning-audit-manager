@@ -26227,15 +26227,32 @@ body.v123PhotoFix input[data-photo]{
       }
       openAuditSystem();
     });
+    function backupScoreForChoice(counts){
+      return (counts.audits * 1000000) + (counts.locations * 1000) + counts.actions;
+    }
     async function latestOnlineBackup(sb){
       var res = await sb.from("audit_backups")
         .select("backup_data,created_at")
         .eq("backup_name", CLOUD_BACKUP_NAME)
         .order("created_at", {ascending:false})
-        .limit(1);
+        .limit(25);
       if (res.error) throw res.error;
       if (!res.data || !res.data.length) return null;
-      return res.data[0].backup_data || {};
+      var best = null;
+      var bestCounts = null;
+      var bestScore = -1;
+      res.data.forEach(function(row){
+        var backup = row.backup_data || {};
+        var c = backupCountsFrom(backup);
+        var score = backupScoreForChoice(c);
+        if (score > bestScore) {
+          best = backup;
+          bestCounts = c;
+          bestScore = score;
+        }
+      });
+      try { window.v187LastOnlineChoice = bestCounts; } catch(ignore) {}
+      return best;
     }
     async function autoLoadOnlineIfUseful(){
       var user = await currentUser();
@@ -26257,7 +26274,7 @@ body.v123PhotoFix input[data-photo]{
       setAppState(backup.state || backup);
       refreshApp();
       var c = counts();
-      status("Loaded latest online data: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)." + (window.v187StorageWarning ? " " + window.v187StorageWarning : ""));
+      status("Loaded best online backup: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)." + (window.v187StorageWarning ? " " + window.v187StorageWarning : ""));
     }
     async function saveOnlineNow(){
       try {
@@ -26273,17 +26290,13 @@ body.v123PhotoFix input[data-photo]{
           .select("backup_data,created_at")
           .eq("backup_name", CLOUD_BACKUP_NAME)
           .order("created_at", {ascending:false})
-          .limit(1);
+          .limit(25);
         if (existing.error) throw existing.error;
         if (existing.data && existing.data.length) {
-          var existingBackup = existing.data[0].backup_data || {};
-          var existingState = existingBackup && existingBackup.state ? existingBackup.state : existingBackup;
-          existingState = existingState && typeof existingState === "object" ? existingState : {};
-          var onlineCounts = {
-            locations:Array.isArray(existingState.locations) ? existingState.locations.length : 0,
-            audits:Array.isArray(existingState.audits) ? existingState.audits.length : 0,
-            actions:Array.isArray(existingState.actions) ? existingState.actions.length : 0
-          };
+          var onlineCounts = existing.data.reduce(function(best, row){
+            var c = backupCountsFrom(row.backup_data || {});
+            return backupScoreForChoice(c) > backupScoreForChoice(best) ? c : best;
+          }, {locations:0,audits:0,actions:0});
           if (onlineCounts.audits > localCounts.audits && !confirm("The online backup has more saved audits (" + onlineCounts.audits + ") than this browser (" + localCounts.audits + "). Save this browser online anyway?")) {
             status("Save online cancelled to protect the larger online backup.");
             return;
@@ -26295,10 +26308,6 @@ body.v123PhotoFix input[data-photo]{
           state: appState()
         };
         status("Saving online...");
-        var removeOld = await sb.from("audit_backups")
-          .delete()
-          .eq("backup_name", CLOUD_BACKUP_NAME);
-        if (removeOld.error) throw removeOld.error;
         var res = await sb.from("audit_backups").insert({
           user_id:user.id,
           backup_name:CLOUD_BACKUP_NAME,
@@ -26332,7 +26341,7 @@ body.v123PhotoFix input[data-photo]{
         setAppState(backup.state || backup);
         refreshApp();
         var c = counts();
-        status("Loaded online: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)." + (window.v187StorageWarning ? " " + window.v187StorageWarning : ""));
+        status("Loaded best online backup: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)." + (window.v187StorageWarning ? " " + window.v187StorageWarning : ""));
         return c;
       } catch(error) {
         status("Load failed: " + (error.message || error));
@@ -26404,7 +26413,7 @@ body.v123PhotoFix input[data-photo]{
       if (labels[tab]) btn.textContent = labels[tab];
     });
     var headerTitle = document.querySelector("header h1");
-    if (headerTitle) headerTitle.textContent = "Audit Manager - Phone Sync Fix 25 Aug v4";
+    if (headerTitle) headerTitle.textContent = "Audit Manager - Best Backup Sync 25 Aug v5";
     document.querySelectorAll(".wrap > .notice").forEach(function(el){
       el.setAttribute("hidden", "hidden");
     });
