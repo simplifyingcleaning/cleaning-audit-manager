@@ -25001,7 +25001,8 @@ body.v123PhotoFix input[data-photo]{
       localStorage.setItem(key, JSON.stringify(next));
       return true;
     } catch(e) {
-      throw new Error("Loaded data could not be saved on this device: " + (e && e.message ? e.message : e));
+      try { sessionStorage.setItem(key, JSON.stringify(next)); } catch(ignore) {}
+      try { window.v187StorageWarning = "Loaded online data, but this device could not keep a local copy. It will load again from the online database when you sign in."; } catch(ignore) {}
     }
   }
   function counts(){
@@ -25689,7 +25690,8 @@ body.v123PhotoFix input[data-photo]{
       localStorage.setItem(key, JSON.stringify(next));
       return true;
     } catch(e) {
-      throw new Error("Loaded data could not be saved on this device: " + (e && e.message ? e.message : e));
+      try { sessionStorage.setItem(key, JSON.stringify(next)); } catch(ignore) {}
+      try { window.v187StorageWarning = "Loaded online data, but this device could not keep a local copy. It will load again from the online database when you sign in."; } catch(ignore) {}
     }
   }
   function counts(){
@@ -25909,7 +25911,8 @@ body.v123PhotoFix input[data-photo]{
       var key = typeof KEY !== "undefined" ? KEY : "simplifying_cleaning_v11_stable";
       localStorage.setItem(key, JSON.stringify(next));
     } catch(e) {
-      throw new Error("Loaded data could not be saved on this device: " + (e && e.message ? e.message : e));
+      try { sessionStorage.setItem(key, JSON.stringify(next)); } catch(ignore) {}
+      try { window.v187StorageWarning = "Loaded online data, but this device could not keep a local copy. It will load again from the online database when you sign in."; } catch(ignore) {}
     }
   }
   function counts(){
@@ -26254,7 +26257,7 @@ body.v123PhotoFix input[data-photo]{
       setAppState(backup.state || backup);
       refreshApp();
       var c = counts();
-      status("Loaded latest online data: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s).");
+      status("Loaded latest online data: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)." + (window.v187StorageWarning ? " " + window.v187StorageWarning : ""));
     }
     async function saveOnlineNow(){
       try {
@@ -26329,7 +26332,7 @@ body.v123PhotoFix input[data-photo]{
         setAppState(backup.state || backup);
         refreshApp();
         var c = counts();
-        status("Loaded online: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s).");
+        status("Loaded online: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)." + (window.v187StorageWarning ? " " + window.v187StorageWarning : ""));
         return c;
       } catch(error) {
         status("Load failed: " + (error.message || error));
@@ -26401,7 +26404,7 @@ body.v123PhotoFix input[data-photo]{
       if (labels[tab]) btn.textContent = labels[tab];
     });
     var headerTitle = document.querySelector("header h1");
-    if (headerTitle) headerTitle.textContent = "Audit Manager - Online Sync Fix 24 Aug v3";
+    if (headerTitle) headerTitle.textContent = "Audit Manager - Phone Sync Fix 25 Aug v4";
     document.querySelectorAll(".wrap > .notice").forEach(function(el){
       el.setAttribute("hidden", "hidden");
     });
