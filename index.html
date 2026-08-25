@@ -26988,6 +26988,18 @@ body:not(.v187AuthLocked) #v187CloudHost{
   function norm(value){ return text(value).toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim(); }
   function rows(){ try { return Array.isArray(draftRows) ? draftRows : []; } catch(e) { return []; } }
   function setRows(next){ try { draftRows = next; } catch(e) {} }
+  function stateSafe(){ try { return state || {locations:[],audits:[],actions:[]}; } catch(e) { return {locations:[],audits:[],actions:[]}; } }
+  function uid(prefix){ try { if (typeof window.uid === "function") return window.uid(prefix); } catch(e) {} return prefix + "_" + Math.random().toString(36).slice(2) + Date.now(); }
+  function isHealthcare(type){ return /^(dental|healthcare|health care)$/i.test(text(type)); }
+  function commit(next){
+    try { state = next; } catch(e) {}
+    try { if (typeof saveState === "function") saveState(); } catch(e) {}
+  }
+  function currentLocation(){
+    var id = text((E("v162Location") || E("auditLocation") || {}).value);
+    return (stateSafe().locations || []).find(function(loc){ return String(loc.id) === String(id); }) || null;
+  }
+  function setRows(next){ try { draftRows = next; } catch(e) {} }
   function uid(prefix){ try { if (typeof window.uid === "function") return window.uid(prefix); } catch(e) {} return prefix + "_" + Math.random().toString(36).slice(2) + Date.now(); }
   function isHealthcare(type){ return /^(dental|healthcare|health care)$/i.test(text(type)); }
   function commit(next){
@@ -28362,7 +28374,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
         return '<button type="button" class="' + (document.body.classList.contains("v197ShowRoomTools") ? 'active' : '') + '" data-v197-room-tools>Room tools</button>';
       }
       return '<button type="button" class="' + (document.body.classList.contains("v195Show" + item[0]) ? 'active' : '') + '" data-v196-toggle="' + item[0] + '">' + item[1] + '</button>';
-    }).join("") + '<button type="button" id="v196DockSave">Save</button>';
+    }).join("") + '<button type="button" id="v198DockRename">Rename</button><button type="button" id="v196DockSave">Save</button>';
     var drawer = dock.querySelector(".v197RoomDrawer");
     if (drawer) {
       drawer.innerHTML =
@@ -28370,7 +28382,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
         '<div><label>Add room</label><input id="v197NewRoom" type="text" placeholder="Room name"><label style="margin-top:6px">Room type</label><select id="v197RoomType">' + roomTypeOptions() + '</select><button type="button" id="v197AddRoomBtn">Add room</button></div>';
     }
     var title = document.querySelector("header h1");
-    if (title) title.textContent = "Audit Manager - Room Type Add 25 Aug v16";
+    if (title) title.textContent = "Audit Manager - Direct Room Rename 25 Aug v17";
   }
   function templateForRoom(loc, roomName){
     try {
@@ -28493,6 +28505,17 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       var newName = text(renameInput && renameInput.value);
       if (!oldName || !newName) return alert("Enter the new room name.");
       renameRoom(oldName, newName);
+      return;
+    }
+    if (target.id === "v198DockRename") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      var currentName = activeArea();
+      if (!currentName) return alert("Select a room first.");
+      var prompted = prompt("Rename selected room", currentName);
+      var newPromptName = text(prompted);
+      if (!newPromptName || newPromptName === currentName) return;
+      renameRoom(currentName, newPromptName);
       return;
     }
     if (target.id === "v196DockSave") {
