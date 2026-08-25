@@ -27570,5 +27570,237 @@ body:not(.v187AuthLocked) #v187CloudHost{
 })();
 </script>
 
+<style id="v193-audit-bottom-shortcuts-style">
+#v193AuditDock{
+  display:none;
+}
+@media(max-width:760px){
+  body.v193AuditActive{
+    padding-bottom:148px!important;
+  }
+  body.v193AuditActive .tabs{
+    display:none!important;
+  }
+  body.v193AuditActive #v162AuditTools{
+    position:static!important;
+    padding:8px!important;
+    margin:0 0 8px!important;
+    background:#fff!important;
+    border:1px solid #dbe4ec!important;
+  }
+  body.v193AuditActive #v162AuditTools .v162AreaTabs,
+  body.v193AuditActive #v162AuditTools > .v162MobileAuditTools > label,
+  body.v193AuditActive #v191SaveAudit{
+    display:none!important;
+  }
+  body.v193AuditActive .v162RoomTools{
+    margin:0!important;
+    border:0!important;
+  }
+  body.v193AuditActive .v162RoomTools summary{
+    min-height:38px!important;
+    color:#0f766e!important;
+  }
+  #v193AuditDock{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:2147483000;
+    display:none;
+    grid-template-columns:1fr auto;
+    gap:8px;
+    align-items:center;
+    background:#ffffff;
+    border-top:1px solid #dbe4ec;
+    box-shadow:0 -8px 22px rgba(15,23,42,.14);
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom));
+  }
+  body.v193AuditActive #v193AuditDock{
+    display:grid;
+  }
+  .v193AreaShortcuts{
+    display:flex;
+    gap:6px;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .v193AreaShortcuts::-webkit-scrollbar{
+    display:none;
+  }
+  .v193AreaShortcuts button{
+    flex:0 0 auto;
+    min-height:42px;
+    max-width:140px;
+    border:1px solid #cbd5e1;
+    border-radius:999px;
+    background:#fff;
+    color:#172033;
+    padding:7px 11px;
+    font-size:12px;
+    font-weight:900;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .v193AreaShortcuts button.active{
+    background:#0f766e;
+    border-color:#0f766e;
+    color:#fff;
+  }
+  #v193DockSave{
+    min-width:86px;
+    min-height:44px;
+    border:0;
+    border-radius:8px;
+    background:#0f766e;
+    color:#fff;
+    font-weight:950;
+    padding:8px 12px;
+  }
+}
+</style>
+
+<script id="v193-audit-bottom-shortcuts-actions">
+(function(){
+  function E(id){ return document.getElementById(id); }
+  function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
+  function norm(value){ return text(value).toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim(); }
+  function rows(){ try { return Array.isArray(draftRows) ? draftRows : []; } catch(e) { return []; } }
+  function stateSafe(){ try { return state || {locations:[],audits:[],actions:[]}; } catch(e) { return {locations:[],audits:[],actions:[]}; } }
+  function currentLocation(){
+    var id = text((E("v162Location") || E("auditLocation") || {}).value);
+    return (stateSafe().locations || []).find(function(loc){ return String(loc.id) === String(id); }) || null;
+  }
+  function activeTab(){
+    var btn = document.querySelector("#v162AuditTools .v162AreaTabs button.active");
+    if (btn) return btn.getAttribute("data-area-tab") || btn.getAttribute("data-v191-area") || btn.textContent || "";
+    var card = document.querySelector("#auditRows [data-row-id]");
+    if (card) {
+      var row = rows().find(function(item){ return String(item.id) === String(card.getAttribute("data-row-id")); });
+      if (row) return row.area || "";
+    }
+    return "";
+  }
+  function areas(){
+    var out = [];
+    rows().forEach(function(row){
+      if (row.area && !out.some(function(area){ return norm(area) === norm(row.area); })) out.push(row.area);
+    });
+    return out;
+  }
+  function ensureDock(){
+    var dock = E("v193AuditDock");
+    if (dock) return dock;
+    dock = document.createElement("div");
+    dock.id = "v193AuditDock";
+    dock.innerHTML = '<div class="v193AreaShortcuts"></div><button type="button" id="v193DockSave">Save</button>';
+    document.body.appendChild(dock);
+    return dock;
+  }
+  function renderDock(){
+    var list = areas();
+    var onAuditTab = !!(document.getElementById("newAudit") && document.getElementById("newAudit").classList.contains("active"));
+    var active = activeTab();
+    document.body.classList.toggle("v193AuditActive", onAuditTab && list.length > 0);
+    var dock = ensureDock();
+    var holder = dock.querySelector(".v193AreaShortcuts");
+    if (!holder) return;
+    holder.innerHTML = list.map(function(area){
+      var safe = String(area).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+      return '<button type="button" class="' + (norm(area) === norm(active) ? 'active' : '') + '" data-v193-area="' + safe + '">' + safe + '</button>';
+    }).join("");
+  }
+  function actionKey(row){
+    return norm(row.area) + "|" + norm(row.element);
+  }
+  function reconcilePreviousActions(){
+    var loc = currentLocation();
+    var list = rows();
+    if (!loc || !list.length) return;
+    var s = stateSafe();
+    s.actions = Array.isArray(s.actions) ? s.actions : [];
+    var auditDate = text((E("v162Date") || E("auditDate") || {}).value) || new Date().toISOString().slice(0,10);
+    var latest = {};
+    list.forEach(function(row){ latest[actionKey(row)] = row.status || ""; });
+    var changed = false;
+    s.actions.forEach(function(action){
+      if (!action || String(action.locationId) !== String(loc.id)) return;
+      if (!action.element) return;
+      var next = latest[norm(action.area) + "|" + norm(action.element)];
+      if (!next) return;
+      action.latestAuditStatus = next;
+      action.reviewDate = auditDate;
+      if (next === "Met" || next === "N/A") {
+        action.status = "Met";
+        action.reviewNotes = "Latest audit marked this element as " + next + ".";
+      } else {
+        action.status = next;
+        action.reviewNotes = "Latest audit still marked this element as " + next + ".";
+      }
+      changed = true;
+    });
+    if (changed) {
+      try { state = s; } catch(e) {}
+      try { if (typeof saveState === "function") saveState(); } catch(e) {}
+    }
+  }
+  document.addEventListener("click", function(event){
+    var target = event.target;
+    if (!target) return;
+    if (target.dataset && target.dataset.v193Area !== undefined) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      var areaName = target.dataset.v193Area;
+      var topButton = Array.from(document.querySelectorAll("#v162AuditTools [data-v191-area],#v162AuditTools [data-area-tab]")).find(function(button){
+        return norm(button.getAttribute("data-v191-area") || button.getAttribute("data-area-tab") || button.textContent) === norm(areaName);
+      });
+      if (topButton) topButton.click();
+      setTimeout(renderDock, 120);
+      return;
+    }
+    if (target.id === "v193DockSave") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      reconcilePreviousActions();
+      var save = E("v191SaveAudit");
+      if (save) save.click();
+      else if (window.v177AuditWorkflow && window.v177AuditWorkflow.saveCurrentAudit) window.v177AuditWorkflow.saveCurrentAudit();
+      else if (typeof window.saveAudit === "function") window.saveAudit();
+      return;
+    }
+    if ((target.dataset && (target.dataset.v191Area !== undefined || target.dataset.areaTab !== undefined)) || target.closest(".tabBtn")) {
+      setTimeout(renderDock, 80);
+    }
+  }, true);
+  document.addEventListener("change", function(event){
+    if (event.target && event.target.id === "v162Location") setTimeout(renderDock, 120);
+  }, true);
+  var previousRender = window.renderAuditRows;
+  window.renderAuditRows = function(){
+    var result;
+    try { if (typeof previousRender === "function") result = previousRender.apply(this, arguments); } catch(e) {}
+    setTimeout(renderDock, 80);
+    return result;
+  };
+  try { renderAuditRows = window.renderAuditRows; } catch(e) {}
+  var previousWorkflow = window.v177AuditWorkflow && window.v177AuditWorkflow.saveCurrentAudit;
+  if (window.v177AuditWorkflow && typeof previousWorkflow === "function") {
+    window.v177AuditWorkflow.saveCurrentAudit = function(){
+      reconcilePreviousActions();
+      return previousWorkflow.apply(this, arguments);
+    };
+  }
+  function install(){
+    renderDock();
+    var headerTitle = document.querySelector("header h1");
+    if (headerTitle) headerTitle.textContent = "Audit Manager - Bottom Area Shortcuts 25 Aug v11";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install);
+  else install();
+  setTimeout(install, 500);
+})();
+</script>
+
 </body>
 </html>
