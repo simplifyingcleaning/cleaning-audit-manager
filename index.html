@@ -26647,7 +26647,7 @@ body.v123PhotoFix input[data-photo]{
       if (labels[tab]) btn.textContent = labels[tab];
     });
     var headerTitle = document.querySelector("header h1");
-    if (headerTitle) headerTitle.textContent = "Audit Manager - Mobile Audit Usability 25 Aug v8";
+    if (headerTitle) headerTitle.textContent = "Audit Manager - Streamlined Mobile Audit 25 Aug v9";
     document.querySelectorAll(".wrap > .notice").forEach(function(el){
       el.setAttribute("hidden", "hidden");
     });
@@ -26756,6 +26756,587 @@ body.v123PhotoFix input[data-photo]{
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire);
   else wire();
+})();
+</script>
+
+<style id="v191-streamlined-audit-mobile-style">
+body:not(.v187AuthLocked) #v187CloudHost{
+  display:none!important;
+}
+#newAudit .help,
+#v177WorkflowSub,
+.v177SuggestionTitle,
+.v177PhotoHint,
+#saveAudit,
+#saveAuditLegacyV177{
+  display:none!important;
+}
+#v177WorkflowBar{
+  position:static!important;
+  border:0!important;
+  background:transparent!important;
+  padding:0!important;
+  margin:8px 0 10px!important;
+  box-shadow:none!important;
+}
+#v177WorkflowBar .v177WorkflowActions{
+  width:100%;
+}
+#v177SummarySuggest,
+#v177CancelEdit{
+  display:none!important;
+}
+#v177SaveAudit,
+#v191SaveAudit{
+  width:100%!important;
+  min-height:48px!important;
+  border-radius:8px!important;
+  background:#0f766e!important;
+  color:#fff!important;
+  border:0!important;
+  font-weight:900!important;
+}
+#v162AuditTools{
+  position:static!important;
+  z-index:auto!important;
+  box-shadow:none!important;
+  background:#f8fafc!important;
+}
+.v162MobileAuditTools label,
+.v191Field label{
+  font-size:12px;
+  font-weight:900;
+  color:#475569;
+}
+.v162AreaTabs{
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  padding:4px 0 2px;
+  scrollbar-width:none;
+}
+.v162AreaTabs::-webkit-scrollbar{display:none}
+.v162AreaTabs button{
+  flex:0 0 auto;
+  min-height:42px;
+  border-radius:999px;
+  border:1px solid #cbd5e1;
+  background:#fff;
+  color:#172033;
+  padding:8px 12px;
+  font-weight:900;
+}
+.v162AreaTabs button.active{
+  background:#0f766e;
+  color:#fff;
+  border-color:#0f766e;
+}
+.v162RoomTools{
+  margin-top:8px;
+  border-top:1px solid #e2e8f0;
+}
+.v162RoomTools summary{
+  min-height:38px;
+  display:flex;
+  align-items:center;
+  cursor:pointer;
+  font-weight:900;
+  color:#334155;
+}
+.v162ToolGrid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+}
+.v191AuditCard{
+  border:1px solid #dbe4ec;
+  border-radius:8px;
+  background:#fff;
+  padding:10px;
+  margin-bottom:10px;
+  scroll-margin-top:14px;
+}
+.v191Area{
+  font-size:13px;
+  font-weight:900;
+  color:#0f766e;
+  margin-bottom:3px;
+}
+.v191Element{
+  color:#172033;
+  font-size:14px;
+  line-height:1.35;
+  font-weight:800;
+}
+.v191StatusSet{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:6px;
+  margin:9px 0;
+}
+.v191StatusSet button{
+  min-height:42px;
+  border-radius:8px;
+  border:1px solid #cbd5e1;
+  background:#fff;
+  color:#172033;
+  padding:6px 4px;
+  font-size:12px;
+  font-weight:900;
+}
+.v191StatusSet button.active[data-status="Met"]{background:#dcfce7;border-color:#16a34a;color:#166534}
+.v191StatusSet button.active[data-status="Partially met"]{background:#fef3c7;border-color:#f59e0b;color:#92400e}
+.v191StatusSet button.active[data-status="Not met"]{background:#fee2e2;border-color:#dc2626;color:#991b1b}
+.v191StatusSet button.active[data-status="N/A"]{background:#f1f5f9;border-color:#64748b;color:#334155}
+.v191Grid{
+  display:grid;
+  gap:8px;
+}
+.v191Field textarea,
+.v191Field input[type="text"],
+.v191Field input[type="date"],
+#v162AuditTools input{
+  width:100%;
+  min-height:42px;
+  border:1px solid #cbd5e1;
+  border-radius:8px;
+  padding:8px 9px;
+  box-sizing:border-box;
+  font-size:15px;
+  background:#fff;
+}
+.v191Field textarea{
+  min-height:64px;
+  resize:vertical;
+}
+.v191Chips{
+  display:flex;
+  gap:6px;
+  overflow-x:auto;
+  padding-top:5px;
+  scrollbar-width:none;
+}
+.v191Chips::-webkit-scrollbar{display:none}
+.v191Chips button,
+.v191PhotoButton,
+.v191RemovePhoto{
+  flex:0 0 auto;
+  border:1px solid #b9dbd7;
+  background:#eef8f7;
+  color:#0f766e;
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:12px;
+  font-weight:850;
+}
+.v191PhotoGrid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+  margin-top:7px;
+}
+.v191PhotoGrid img{
+  width:100%;
+  height:72px;
+  object-fit:cover;
+  border-radius:8px;
+  border:1px solid #e2e8f0;
+}
+.v191OwnerDate{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+@media(max-width:760px){
+  #newAudit .card{
+    padding:12px!important;
+    border-radius:8px!important;
+    margin-bottom:10px!important;
+  }
+  #v162CreateAuditCard h2{
+    margin-bottom:8px!important;
+  }
+  #v162CreateAuditCard .grid,
+  #v162CreateAuditCard .grid.three,
+  #v162CreateAuditCard .actions{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+  }
+  .v191OwnerDate{
+    grid-template-columns:1fr;
+  }
+}
+</style>
+
+<script id="v191-streamlined-audit-mobile">
+(function(){
+  var PHOTO_PREFIX = "idbphoto:";
+  var PHOTO_DB = "simplifying_cleaning_photo_store_v162";
+  var MAX_PHOTOS = 40;
+  var activeArea = "";
+
+  function E(id){ return document.getElementById(id); }
+  function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
+  function esc(value){
+    return String(value === null || value === undefined ? "" : value)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;");
+  }
+  function norm(value){ return text(value).toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim(); }
+  function rows(){ try { return Array.isArray(draftRows) ? draftRows : []; } catch(e) { return []; } }
+  function setRows(next){ try { draftRows = next; } catch(e) {} }
+  function stateSafe(){ try { return state || {locations:[],audits:[],actions:[]}; } catch(e) { return {locations:[],audits:[],actions:[]}; } }
+  function uid(prefix){ try { if (typeof window.uid === "function") return window.uid(prefix); } catch(e) {} return prefix + "_" + Math.random().toString(36).slice(2) + Date.now(); }
+  function currentLocation(){
+    var id = text((E("v162Location") || E("auditLocation") || {}).value);
+    return (stateSafe().locations || []).find(function(loc){ return String(loc.id) === String(id); }) || null;
+  }
+  function areas(){
+    var out = [];
+    rows().forEach(function(row){ if (row.area && !out.some(function(area){ return norm(area) === norm(row.area); })) out.push(row.area); });
+    return out;
+  }
+  function photoCount(){ return rows().reduce(function(total,row){ return total + (Array.isArray(row.photos) ? row.photos.length : 0); }, 0); }
+  function rowById(id){ return rows().find(function(row){ return String(row.id) === String(id); }) || null; }
+  function isHealthcare(type){ return /^(dental|healthcare|health care)$/i.test(text(type)); }
+  function metObservation(){ return "Standard met at the time of audit."; }
+  function templateForRoom(loc, roomName){
+    try {
+      var list = typeof window.templateFor === "function" ? window.templateFor(loc && loc.type || "commercial", roomName) : [];
+      return Array.isArray(list) ? list : [];
+    } catch(e) {
+      return [];
+    }
+  }
+  function commit(next){
+    try { state = next; } catch(e) {}
+    try { if (typeof saveState === "function") saveState(); else localStorage.setItem("simplifying_cleaning_audit_manager_v11", JSON.stringify(next)); } catch(e) {}
+  }
+  function elementKind(element){
+    var value = norm(element);
+    if (/floor|mat|stair|landing/.test(value) && !/handrail|banister/.test(value)) return "floor";
+    if (/handrail|banister/.test(value)) return "handrail";
+    if (/waste|bin|receptacle|liner|sanitary/.test(value)) return "waste";
+    if (/door|handle|switch|touchpoint|push|lock|control/.test(value)) return "touchpoint";
+    if (/toilet|pan|seat|flush/.test(value)) return "toilet";
+    if (/sink|tap|basin|splashback/.test(value)) return "sink";
+    if (/mirror|glass|glazing|vision|window|screen/.test(value)) return "glass";
+    if (/high|cobweb|vent|ceiling/.test(value)) return "high";
+    if (/wall|ledge|skirting|edge|corner|low/.test(value)) return "low";
+    if (/radiator|pipework|fitting/.test(value)) return "fixtures";
+    if (/computer|keyboard|mouse|telephone|printer|scanner|equipment|storage|coshh|colour|color/.test(value)) return "equipment";
+    if (/chair|seating|table|desk|surface|counter|furniture/.test(value)) return "surface";
+    return "general";
+  }
+  function suggestions(row){
+    var kind = elementKind(row.element);
+    var status = row.status || "Met";
+    var obs = {
+      floor:["Visible debris noted","Edges require detail clean","Marks present","Floor clean and presentable"],
+      handrail:["Handrail marks visible","Banister detail required","Handrail clean","Frequent contact clean needed"],
+      waste:["Bin needs emptying","Bin exterior marked","Liner missing/incorrect","Bin clean and lined"],
+      touchpoint:["Finger marks visible","Detail around handle needed","Touchpoints clean","Switch plate marked"],
+      toilet:["Sanitary marks visible","Hygiene clean required","Toilet clean","Flush area marked"],
+      sink:["Residue around taps","Splashback marked","Sink clean","Water marks visible"],
+      glass:["Finger marks visible","Smears noted","Glass clean","Ledge dusty"],
+      high:["High-level dust noted","Cobwebs present","Vent dusty","High level acceptable"],
+      low:["Skirting dusty","Low-level edge missed","Ledge dusty","Low-level detail clean"],
+      fixtures:["Radiator dusty","Pipework marked","Fittings clean","Detail clean required"],
+      equipment:["Shared equipment marked","Storage untidy","Equipment clean","COSHH/storage issue"],
+      surface:["Surface marked","Chair arms need clean","Surface clean","Furniture detail required"],
+      general:["Visible marks noted","Detail clean required","Standard met","Requires attention"]
+    };
+    var act = {
+      floor:["Re-clean floor","Detail clean edges","Spot clean marks","Supervisor recheck"],
+      handrail:["Clean handrail","Detail clean banister","Add to touchpoint check","Supervisor recheck"],
+      waste:["Empty and reline bin","Clean bin exterior","Review waste frequency","Supervisor recheck"],
+      touchpoint:["Clean touchpoints","Detail clean handles","Add to routine check","Supervisor recheck"],
+      toilet:["Full hygiene clean","Re-clean sanitary area","Restock/check consumables","Supervisor recheck"],
+      sink:["Re-clean sink/taps","Clean splashback","Polish chrome","Supervisor recheck"],
+      glass:["Clean glazing","Polish glass","Clean ledge","Supervisor recheck"],
+      high:["Remove cobwebs","Dust vents/corners","Add to periodic clean","Supervisor recheck"],
+      low:["Clean skirting","Detail clean ledges","Remove low-level build-up","Add to periodic clean"],
+      fixtures:["Clean radiator/pipework","Detail clean fittings","Add to next clean","Supervisor recheck"],
+      equipment:["Clean shared equipment","Tidy storage","Review COSHH storage","Supervisor recheck"],
+      surface:["Clean surface","Wipe chair arms","Detail clean furniture","Supervisor recheck"],
+      general:["Re-clean item","Add to follow-up","Review with cleaner","Supervisor recheck"]
+    };
+    if (status === "Met") return { obs:(obs[kind] || obs.general).slice(-2), act:["No action required"] };
+    if (status === "N/A") return { obs:["Not applicable","Not in agreed scope"], act:["No action required"] };
+    return { obs:obs[kind] || obs.general, act:act[kind] || act.general };
+  }
+  function openDb(){
+    return new Promise(function(resolve, reject){
+      if (!window.indexedDB) return reject(new Error("Photo storage is not available in this browser."));
+      var req = indexedDB.open(PHOTO_DB, 1);
+      req.onupgradeneeded = function(){ var db = req.result; if (!db.objectStoreNames.contains("photos")) db.createObjectStore("photos", { keyPath:"id" }); };
+      req.onsuccess = function(){ resolve(req.result); };
+      req.onerror = function(){ reject(req.error || new Error("Could not open photo storage.")); };
+    });
+  }
+  function getPhoto(ref){
+    return openDb().then(function(db){ return new Promise(function(resolve,reject){
+      var tx = db.transaction("photos","readonly");
+      var req = tx.objectStore("photos").get(String(ref).replace(PHOTO_PREFIX,""));
+      req.onsuccess = function(){ db.close(); resolve(req.result && req.result.dataUrl || ""); };
+      req.onerror = function(){ db.close(); reject(req.error || new Error("Could not load photo.")); };
+    }); });
+  }
+  function putPhoto(dataUrl, meta){
+    return openDb().then(function(db){ return new Promise(function(resolve,reject){
+      var id = uid("photo");
+      var tx = db.transaction("photos","readwrite");
+      tx.objectStore("photos").put({ id:id, dataUrl:dataUrl, createdAt:new Date().toISOString(), meta:meta || {} });
+      tx.oncomplete = function(){ db.close(); resolve(PHOTO_PREFIX + id); };
+      tx.onerror = function(){ db.close(); reject(tx.error || new Error("Could not save photo.")); };
+    }); });
+  }
+  function fileDataUrl(file){
+    return new Promise(function(resolve,reject){
+      var reader = new FileReader();
+      reader.onload = function(){ resolve(String(reader.result || "")); };
+      reader.onerror = function(){ reject(reader.error || new Error("Could not read photo.")); };
+      reader.readAsDataURL(file);
+    });
+  }
+  function compress(dataUrl){
+    return new Promise(function(resolve){
+      var img = new Image();
+      img.onload = function(){
+        var maxSide = 700;
+        var ratio = Math.min(1, maxSide / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+        var canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round((img.naturalWidth || img.width) * ratio));
+        canvas.height = Math.max(1, Math.round((img.naturalHeight || img.height) * ratio));
+        var ctx = canvas.getContext("2d", { alpha:false });
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.42));
+      };
+      img.onerror = function(){ resolve(dataUrl); };
+      img.src = dataUrl;
+    });
+  }
+  async function addPhotos(row, files){
+    row.photos = Array.isArray(row.photos) ? row.photos : [];
+    var remaining = Math.max(0, MAX_PHOTOS - photoCount());
+    var list = Array.from(files || []).slice(0, remaining);
+    for (var i = 0; i < list.length; i++) {
+      var dataUrl = await compress(await fileDataUrl(list[i]));
+      row.photos.push(await putPhoto(dataUrl, { rowId:row.id, area:row.area, element:row.element }));
+    }
+    render(row.id);
+  }
+  function pickPhoto(capture, cb){
+    var input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = true;
+    if (capture) input.setAttribute("capture","environment");
+    input.style.position = "fixed";
+    input.style.left = "-9999px";
+    input.onchange = function(){ cb(input.files); setTimeout(function(){ input.remove(); }, 500); };
+    document.body.appendChild(input);
+    input.click();
+  }
+  function renderTools(wrap){
+    var old = E("v162AuditTools");
+    if (old) old.remove();
+    var list = areas();
+    if (!list.some(function(area){ return norm(area) === norm(activeArea); })) activeArea = list[0] || "";
+    var panel = document.createElement("div");
+    panel.id = "v162AuditTools";
+    panel.innerHTML =
+      '<div class="v162MobileAuditTools">' +
+        '<label>Area</label><div class="v162AreaTabs">' + list.map(function(area){ return '<button type="button" class="' + (norm(area) === norm(activeArea) ? 'active' : '') + '" data-v191-area="' + esc(area) + '">' + esc(area) + '</button>'; }).join("") + '</div>' +
+        '<details class="v162RoomTools"><summary>Room tools</summary><div class="v162ToolGrid">' +
+          '<div><label>Rename current area</label><input id="v191RenameArea" type="text" value="' + esc(activeArea) + '"><button type="button" class="v191PhotoButton" id="v191RenameAreaBtn">Rename</button></div>' +
+          '<div><label>Add room</label><input id="v191NewRoom" type="text" placeholder="Room name"><button type="button" class="v191PhotoButton" id="v191AddRoomBtn">Add room</button></div>' +
+        '</div></details>' +
+        '<button type="button" id="v191SaveAudit">Save audit</button>' +
+      '</div>';
+    wrap.parentNode.insertBefore(panel, wrap);
+  }
+  function render(anchorId){
+    var wrap = E("auditRows");
+    if (!wrap) return;
+    if (!rows().length) {
+      wrap.innerHTML = "";
+      var old = E("v162AuditTools");
+      if (old) old.remove();
+      return;
+    }
+    var visible = rows().filter(function(row){ return norm(row.area) === norm(activeArea || areas()[0]); });
+    if (!visible.length) visible = rows();
+    wrap.innerHTML = visible.map(function(row){
+      var sug = suggestions(row);
+      return '<div class="v191AuditCard" data-row-id="' + esc(row.id) + '">' +
+        '<div class="v191Area">' + esc(row.area) + (row.fr ? ' | ' + esc(row.fr) : '') + '</div>' +
+        '<div class="v191Element">' + esc(row.element) + '</div>' +
+        '<div class="v191StatusSet">' + ["Met","Partially met","Not met","N/A"].map(function(status){ return '<button type="button" class="' + (row.status === status ? 'active' : '') + '" data-v191-status="' + esc(status) + '" data-status="' + esc(status) + '">' + esc(status) + '</button>'; }).join("") + '</div>' +
+        '<div class="v191Grid">' +
+          '<div class="v191Field"><label>Observation</label><textarea data-v191-field="observation">' + esc(row.observation || "") + '</textarea><div class="v191Chips">' + sug.obs.map(function(item){ return '<button type="button" data-v191-obs="' + esc(item) + '">' + esc(item) + '</button>'; }).join("") + '</div></div>' +
+          '<div class="v191Field"><label>Action</label><input type="text" data-v191-field="actionText" value="' + esc(row.actionText || "") + '"><div class="v191Chips">' + sug.act.map(function(item){ return '<button type="button" data-v191-act="' + esc(item) + '">' + esc(item) + '</button>'; }).join("") + '</div></div>' +
+          '<div class="v191OwnerDate"><div class="v191Field"><label>Owner</label><input type="text" data-v191-field="owner" value="' + esc(row.owner || "") + '"></div><div class="v191Field"><label>Target date</label><input type="date" data-v191-field="targetDate" value="' + esc(row.targetDate || "") + '"></div></div>' +
+          '<div class="v191Field"><label>Photos (' + photoCount() + '/' + MAX_PHOTOS + ')</label><div class="v191Chips"><button type="button" class="v191PhotoButton" data-v191-camera>Take photo</button><button type="button" class="v191PhotoButton" data-v191-upload>Upload</button></div><div class="v191PhotoGrid">' + (row.photos || []).map(function(photo, index){ return '<div><img data-v191-photo="' + esc(photo) + '" src="' + (/^data:image\//i.test(text(photo)) ? esc(photo) : '') + '"><button type="button" class="v191RemovePhoto" data-v191-remove="' + index + '">Remove</button></div>'; }).join("") + '</div></div>' +
+        '</div></div>';
+    }).join("");
+    renderTools(wrap);
+    Array.from(document.querySelectorAll("img[data-v191-photo]")).forEach(function(img){
+      var ref = img.getAttribute("data-v191-photo");
+      if (ref && ref.indexOf(PHOTO_PREFIX) === 0) getPhoto(ref).then(function(src){ if (src) img.src = src; }).catch(function(){});
+    });
+    if (anchorId) setTimeout(function(){
+      var card = document.querySelector('.v191AuditCard[data-row-id="' + String(anchorId).replace(/"/g,'\\"') + '"]');
+      if (card) card.scrollIntoView({ block:"nearest" });
+    }, 0);
+  }
+  function updateRowFromTarget(target){
+    var card = target.closest && target.closest("[data-row-id]");
+    var row = card ? rowById(card.getAttribute("data-row-id")) : null;
+    return { card:card, row:row };
+  }
+  window.addEventListener("click", function(event){
+    var target = event.target;
+    if (!target) return;
+    if (target.id === "v162LoadAudit") {
+      setTimeout(function(){
+        var list = areas();
+        if (list.length && !list.some(function(area){ return norm(area) === norm(activeArea); })) activeArea = list[0];
+        render();
+      }, 50);
+      return;
+    }
+    if (target.dataset && target.dataset.v191Area !== undefined) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      activeArea = target.dataset.v191Area;
+      render();
+      return;
+    }
+    if (target.id === "v191SaveAudit") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (window.v177AuditWorkflow && window.v177AuditWorkflow.saveCurrentAudit) window.v177AuditWorkflow.saveCurrentAudit();
+      else if (typeof window.saveAudit === "function") window.saveAudit();
+      return;
+    }
+    if (target.id === "v191AddRoomBtn") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      var input = E("v191NewRoom");
+      var name = text(input && input.value);
+      if (!name) return alert("Enter a room name.");
+      var loc = currentLocation();
+      var fr = loc && isHealthcare(loc.type) ? "FR4" : "";
+      var newRows = templateForRoom(loc, name).map(function(element){ return { id:uid("row"), area:name, fr:fr, element:element, status:"Met", observation:metObservation(), actionText:"", owner:"", targetDate:"", photos:[] }; });
+      setRows(rows().concat(newRows));
+      if (loc) {
+        var s = stateSafe();
+        var savedLoc = (s.locations || []).find(function(item){ return String(item.id) === String(loc.id); });
+        if (savedLoc) {
+          savedLoc.rooms = Array.isArray(savedLoc.rooms) ? savedLoc.rooms : [];
+          savedLoc.rooms.push({ name:name, fr:fr });
+          commit(s);
+        }
+      }
+      activeArea = name;
+      render();
+      return;
+    }
+    if (target.id === "v191RenameAreaBtn") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      var newName = text((E("v191RenameArea") || {}).value);
+      var oldName = activeArea;
+      if (!oldName || !newName) return alert("Enter the new area name.");
+      rows().forEach(function(row){ if (norm(row.area) === norm(oldName)) row.area = newName; });
+      var locRename = currentLocation();
+      if (locRename) {
+        var sRename = stateSafe();
+        var savedRename = (sRename.locations || []).find(function(item){ return String(item.id) === String(locRename.id); });
+        if (savedRename && Array.isArray(savedRename.rooms)) savedRename.rooms.forEach(function(room){ if (norm(room.name) === norm(oldName)) room.name = newName; });
+        commit(sRename);
+      }
+      activeArea = newName;
+      render();
+      return;
+    }
+    if (target.dataset && target.dataset.v191Status !== undefined) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      var statusInfo = updateRowFromTarget(target);
+      if (!statusInfo.row || !statusInfo.card) return;
+      statusInfo.row.status = target.dataset.v191Status;
+      statusInfo.card.querySelectorAll("[data-v191-status]").forEach(function(button){ button.classList.toggle("active", button === target); });
+      return;
+    }
+    if (target.dataset && target.dataset.v191Obs !== undefined) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      var obsInfo = updateRowFromTarget(target);
+      if (!obsInfo.row || !obsInfo.card) return;
+      obsInfo.row.observation = text(obsInfo.row.observation ? obsInfo.row.observation + "\n" + target.dataset.v191Obs : target.dataset.v191Obs);
+      var obsBox = obsInfo.card.querySelector('[data-v191-field="observation"]');
+      if (obsBox) obsBox.value = obsInfo.row.observation;
+      return;
+    }
+    if (target.dataset && target.dataset.v191Act !== undefined) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      var actInfo = updateRowFromTarget(target);
+      if (!actInfo.row || !actInfo.card) return;
+      actInfo.row.actionText = text(actInfo.row.actionText ? actInfo.row.actionText + "\n" + target.dataset.v191Act : target.dataset.v191Act);
+      if (actInfo.row.status === "Met" && target.dataset.v191Act !== "No action required") actInfo.row.status = "Partially met";
+      var actBox = actInfo.card.querySelector('[data-v191-field="actionText"]');
+      if (actBox) actBox.value = actInfo.row.actionText;
+      actInfo.card.querySelectorAll("[data-v191-status]").forEach(function(button){ button.classList.toggle("active", button.getAttribute("data-v191-status") === actInfo.row.status); });
+      return;
+    }
+    if (target.dataset && target.dataset.v191Remove !== undefined) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      var removeInfo = updateRowFromTarget(target);
+      if (!removeInfo.row) return;
+      removeInfo.row.photos = Array.isArray(removeInfo.row.photos) ? removeInfo.row.photos : [];
+      removeInfo.row.photos.splice(Number(target.dataset.v191Remove), 1);
+      render(removeInfo.row.id);
+      return;
+    }
+    if (target.dataset && (target.dataset.v191Camera !== undefined || target.dataset.v191Upload !== undefined)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      var photoInfo = updateRowFromTarget(target);
+      if (!photoInfo.row) return;
+      pickPhoto(target.dataset.v191Camera !== undefined, function(files){ addPhotos(photoInfo.row, files).catch(function(error){ alert(error && error.message ? error.message : String(error)); }); });
+    }
+  }, true);
+  window.addEventListener("input", function(event){
+    var target = event.target;
+    if (!target || !target.dataset || !target.dataset.v191Field) return;
+    var info = updateRowFromTarget(target);
+    if (info.row) info.row[target.dataset.v191Field] = target.value;
+  }, true);
+  var previousRender = window.renderAuditRows;
+  window.renderAuditRows = function(){
+    try {
+      if (typeof previousRender === "function") previousRender.apply(this, arguments);
+    } catch(e) {}
+    render();
+  };
+  try { renderAuditRows = window.renderAuditRows; } catch(e) {}
+  function install(){
+    var host = E("v187CloudHost");
+    if (host && !document.body.classList.contains("v187AuthLocked")) host.style.display = "none";
+    render();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install);
+  else install();
+  setTimeout(install, 500);
 })();
 </script>
 
