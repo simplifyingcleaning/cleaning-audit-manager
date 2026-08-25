@@ -27802,5 +27802,175 @@ body:not(.v187AuthLocked) #v187CloudHost{
 })();
 </script>
 
+<style id="v194-audit-top-buttons-style">
+.v194AuditQuickBar{
+  display:none;
+}
+@media(max-width:760px){
+  body.v193AuditActive .v194AuditQuickBar{
+    display:flex;
+    gap:6px;
+    overflow-x:auto;
+    padding:0 0 8px;
+    margin:0 0 8px;
+    scrollbar-width:none;
+  }
+  body.v193AuditActive .v194AuditQuickBar::-webkit-scrollbar{
+    display:none;
+  }
+  .v194AuditQuickBar button{
+    flex:0 0 auto;
+    min-height:40px;
+    border:1px solid #cbd5e1;
+    border-radius:999px;
+    background:#fff;
+    color:#172033;
+    padding:7px 12px;
+    font-size:13px;
+    font-weight:900;
+  }
+  .v194AuditQuickBar button.active{
+    background:#0f766e;
+    border-color:#0f766e;
+    color:#fff;
+  }
+  body.v193AuditActive .v194CarryCard,
+  body.v193AuditActive .v194SummaryWrap{
+    display:none!important;
+  }
+  body.v193AuditActive.v194ShowCarry .v194CarryCard,
+  body.v193AuditActive.v194ShowSummary .v194SummaryWrap{
+    display:block!important;
+  }
+  body.v193AuditActive .v194CarryCard{
+    border-radius:8px!important;
+    padding:10px!important;
+    margin-bottom:8px!important;
+  }
+  body.v193AuditActive .v194CarryCard h2{
+    font-size:18px!important;
+    margin-bottom:8px!important;
+  }
+  body.v193AuditActive .v194CarryCard .list,
+  body.v193AuditActive #carryForward .list{
+    padding:9px!important;
+    margin-bottom:8px!important;
+    border-radius:8px!important;
+  }
+  body.v193AuditActive #v162CreateAuditCard{
+    margin-bottom:8px!important;
+  }
+  body.v193AuditActive #v162CreateAuditCard > h2,
+  body.v193AuditActive #v162CreateAuditCard label[for="v162SummaryPreset"],
+  body.v193AuditActive #v162SummaryPreset{
+    display:none!important;
+  }
+}
+</style>
+
+<script id="v194-audit-top-buttons">
+(function(){
+  function E(id){ return document.getElementById(id); }
+  function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
+  function rows(){ try { return Array.isArray(draftRows) ? draftRows : []; } catch(e) { return []; } }
+  function panelActive(){
+    var panel = E("newAudit");
+    return !!(panel && panel.classList.contains("active") && rows().length);
+  }
+  function markCarryCard(){
+    var carry = E("carryForward");
+    if (!carry) return null;
+    var card = carry.closest ? carry.closest(".card") : null;
+    if (card) card.classList.add("v194CarryCard");
+    return card;
+  }
+  function markSummary(){
+    var summary = E("v162Summary");
+    if (!summary) return null;
+    var wrap = summary.closest ? summary.closest("div") : null;
+    if (wrap) wrap.classList.add("v194SummaryWrap");
+    return wrap;
+  }
+  function ensureQuickBar(){
+    var auditRows = E("auditRows");
+    if (!auditRows || !auditRows.parentNode) return null;
+    var bar = E("v194AuditQuickBar");
+    if (bar) return bar;
+    bar = document.createElement("div");
+    bar.id = "v194AuditQuickBar";
+    bar.className = "v194AuditQuickBar";
+    bar.innerHTML =
+      '<button type="button" id="v194ToggleCarry">Previous actions</button>' +
+      '<button type="button" id="v194ToggleSummary">Summary</button>' +
+      '<button type="button" id="v194ToggleRooms">Room tools</button>';
+    auditRows.parentNode.insertBefore(bar, auditRows);
+    return bar;
+  }
+  function syncButtons(){
+    var carry = E("v194ToggleCarry");
+    var summary = E("v194ToggleSummary");
+    var rooms = E("v194ToggleRooms");
+    if (carry) carry.classList.toggle("active", document.body.classList.contains("v194ShowCarry"));
+    if (summary) summary.classList.toggle("active", document.body.classList.contains("v194ShowSummary"));
+    var roomTools = document.querySelector(".v162RoomTools");
+    if (rooms) rooms.classList.toggle("active", !!(roomTools && roomTools.open));
+  }
+  function closeClutter(){
+    if (!panelActive()) {
+      document.body.classList.remove("v194ShowCarry");
+      document.body.classList.remove("v194ShowSummary");
+    }
+  }
+  function install(){
+    markCarryCard();
+    markSummary();
+    ensureQuickBar();
+    closeClutter();
+    syncButtons();
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Cleaner Audit Buttons 25 Aug v12";
+  }
+  document.addEventListener("click", function(event){
+    var target = event.target;
+    if (!target) return;
+    if (target.id === "v194ToggleCarry") {
+      event.preventDefault();
+      document.body.classList.toggle("v194ShowCarry");
+      syncButtons();
+      return;
+    }
+    if (target.id === "v194ToggleSummary") {
+      event.preventDefault();
+      document.body.classList.toggle("v194ShowSummary");
+      syncButtons();
+      return;
+    }
+    if (target.id === "v194ToggleRooms") {
+      event.preventDefault();
+      var roomTools = document.querySelector(".v162RoomTools");
+      if (roomTools) {
+        roomTools.open = !roomTools.open;
+        if (roomTools.open) roomTools.scrollIntoView({ block:"nearest" });
+      }
+      syncButtons();
+      return;
+    }
+    if (target.closest && target.closest(".tabBtn")) setTimeout(install, 120);
+    if (target.id === "v162LoadAudit") setTimeout(install, 160);
+  }, true);
+  var previousRender = window.renderAuditRows;
+  window.renderAuditRows = function(){
+    var result;
+    try { if (typeof previousRender === "function") result = previousRender.apply(this, arguments); } catch(e) {}
+    setTimeout(install, 80);
+    return result;
+  };
+  try { renderAuditRows = window.renderAuditRows; } catch(e) {}
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install);
+  else install();
+  setTimeout(install, 500);
+})();
+</script>
+
 </body>
 </html>
