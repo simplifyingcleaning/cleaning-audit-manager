@@ -28141,5 +28141,215 @@ body.v195ShowRooms #newAudit #v162AuditTools{
 })();
 </script>
 
+<style id="v196-bottom-room-dock-style">
+#v78SafeTop,
+#v80AuditHeader,
+#v194AuditQuickBar,
+#v195QuickBar,
+#v193AuditDock,
+.v78SafeTop,
+.v80AuditHeader{
+  display:none!important;
+}
+#v196AuditDock{
+  display:none;
+}
+body.v196AuditActive{
+  padding-bottom:154px!important;
+}
+body.v196AuditActive #v196AuditDock{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  z-index:2147483500;
+  display:block;
+  background:#ffffff;
+  border-top:1px solid #dbe4ec;
+  box-shadow:0 -10px 24px rgba(15,23,42,.16);
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+}
+.v196Rooms,
+.v196Tools{
+  display:flex;
+  gap:6px;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.v196Rooms::-webkit-scrollbar,
+.v196Tools::-webkit-scrollbar{
+  display:none;
+}
+.v196Rooms{
+  margin-bottom:7px;
+}
+.v196Rooms button,
+.v196Tools button{
+  flex:0 0 auto;
+  min-height:40px;
+  border:1px solid #cbd5e1;
+  border-radius:999px;
+  background:#fff;
+  color:#172033;
+  padding:7px 11px;
+  font-size:12px;
+  font-weight:900;
+  max-width:145px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.v196Rooms button.active,
+.v196Tools button.active{
+  background:#0f766e;
+  border-color:#0f766e;
+  color:#fff;
+}
+#v196DockSave{
+  background:#2b145f!important;
+  border-color:#2b145f!important;
+  color:#fff!important;
+  min-width:82px;
+}
+#newAudit .v195AuxCard,
+#newAudit .v195SummaryWrap,
+#newAudit #v162AuditTools{
+  display:none!important;
+}
+body.v195ShowCarry #newAudit .v195CarryCard,
+body.v195ShowSafety #newAudit .v195SafetyCard,
+body.v195ShowActions #newAudit .v195ActionsCard,
+body.v195ShowSummary #newAudit .v195SummaryWrap,
+body.v195ShowRooms #newAudit #v162AuditTools{
+  display:block!important;
+}
+body.v195ShowRooms #newAudit #v162AuditTools .v162AreaTabs,
+body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
+  display:none!important;
+}
+@media(max-width:760px){
+  body.v196AuditActive .tabs{
+    display:none!important;
+  }
+  body.v196AuditActive{
+    padding-bottom:158px!important;
+  }
+  #newAudit .v195AuditChecklistCard{
+    margin-bottom:8px!important;
+  }
+}
+</style>
+
+<script id="v196-bottom-room-dock">
+(function(){
+  function E(id){ return document.getElementById(id); }
+  function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
+  function esc(value){ return String(value === null || value === undefined ? "" : value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function norm(value){ return text(value).toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim(); }
+  function rows(){ try { return Array.isArray(draftRows) ? draftRows : []; } catch(e) { return []; } }
+  function areas(){
+    var out = [];
+    rows().forEach(function(row){
+      if (row.area && !out.some(function(area){ return norm(area) === norm(row.area); })) out.push(row.area);
+    });
+    return out;
+  }
+  function onAudit(){
+    var panel = E("newAudit");
+    return !!(panel && panel.classList.contains("active") && rows().length);
+  }
+  function activeArea(){
+    var active = document.querySelector("#v162AuditTools [data-v191-area].active,#v162AuditTools [data-area-tab].active");
+    if (active) return active.getAttribute("data-v191-area") || active.getAttribute("data-area-tab") || active.textContent || "";
+    var first = document.querySelector("#auditRows [data-row-id]");
+    if (first) {
+      var row = rows().find(function(item){ return String(item.id) === String(first.getAttribute("data-row-id")); });
+      if (row) return row.area || "";
+    }
+    return "";
+  }
+  function ensureDock(){
+    var dock = E("v196AuditDock");
+    if (dock) return dock;
+    dock = document.createElement("div");
+    dock.id = "v196AuditDock";
+    dock.innerHTML = '<div class="v196Rooms"></div><div class="v196Tools"></div>';
+    document.body.appendChild(dock);
+    return dock;
+  }
+  function syncButtons(){
+    var dock = ensureDock();
+    document.body.classList.toggle("v196AuditActive", onAudit());
+    var roomHolder = dock.querySelector(".v196Rooms");
+    var toolHolder = dock.querySelector(".v196Tools");
+    var current = activeArea();
+    roomHolder.innerHTML = areas().map(function(area){
+      return '<button type="button" class="' + (norm(area) === norm(current) ? 'active' : '') + '" data-v196-area="' + esc(area) + '">' + esc(area) + '</button>';
+    }).join("");
+    var tools = [
+      ["Carry","Previous"],
+      ["Summary","Summary"],
+      ["Safety","Safety"],
+      ["Actions","Actions"],
+      ["Rooms","Room tools"]
+    ];
+    toolHolder.innerHTML = tools.map(function(item){
+      return '<button type="button" class="' + (document.body.classList.contains("v195Show" + item[0]) ? 'active' : '') + '" data-v196-toggle="' + item[0] + '">' + item[1] + '</button>';
+    }).join("") + '<button type="button" id="v196DockSave">Save</button>';
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Bottom Room Dock 25 Aug v14";
+  }
+  function clickArea(area){
+    var topButton = Array.from(document.querySelectorAll("#v162AuditTools [data-v191-area],#v162AuditTools [data-area-tab]")).find(function(button){
+      return norm(button.getAttribute("data-v191-area") || button.getAttribute("data-area-tab") || button.textContent) === norm(area);
+    });
+    if (topButton) topButton.click();
+  }
+  document.addEventListener("click", function(event){
+    var target = event.target;
+    if (!target) return;
+    if (target.dataset && target.dataset.v196Area !== undefined) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      clickArea(target.dataset.v196Area);
+      setTimeout(syncButtons, 120);
+      return;
+    }
+    if (target.dataset && target.dataset.v196Toggle !== undefined) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      var name = target.dataset.v196Toggle;
+      document.body.classList.toggle("v195Show" + name);
+      setTimeout(syncButtons, 20);
+      var panel = document.querySelector(".v195" + name + "Card") || (name === "Summary" ? document.querySelector(".v195SummaryWrap") : null) || (name === "Rooms" ? E("v162AuditTools") : null);
+      if (panel && document.body.classList.contains("v195Show" + name)) setTimeout(function(){ panel.scrollIntoView({ block:"nearest" }); }, 40);
+      return;
+    }
+    if (target.id === "v196DockSave") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      var save = E("v193DockSave") || E("v191SaveAudit");
+      if (save) save.click();
+      else if (window.v177AuditWorkflow && window.v177AuditWorkflow.saveCurrentAudit) window.v177AuditWorkflow.saveCurrentAudit();
+      else if (typeof window.saveAudit === "function") window.saveAudit();
+      return;
+    }
+    if (target.closest && target.closest(".tabBtn")) setTimeout(syncButtons, 120);
+    if (target.id === "v162LoadAudit" || target.id === "loadAudit") setTimeout(syncButtons, 220);
+  }, true);
+  var previousRender = window.renderAuditRows;
+  window.renderAuditRows = function(){
+    var result;
+    try { if (typeof previousRender === "function") result = previousRender.apply(this, arguments); } catch(e) {}
+    setTimeout(syncButtons, 100);
+    return result;
+  };
+  try { renderAuditRows = window.renderAuditRows; } catch(e) {}
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", syncButtons);
+  else syncButtons();
+  setTimeout(syncButtons, 600);
+})();
+</script>
+
 </body>
 </html>
