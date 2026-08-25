@@ -26240,7 +26240,7 @@ body.v123PhotoFix input[data-photo]{
       var sb = await getClient();
       var backup = await latestOnlineBackup(sb);
       if (!backup) {
-        status("Signed in. No online backup has been saved yet.");
+        status("Signed in as " + (user.email || "approved user") + ", but no shared online backup is visible. Run the Supabase shared-access SQL, then save online from the device with the audits.");
         return;
       }
       var local = counts();
@@ -26303,7 +26303,7 @@ body.v123PhotoFix input[data-photo]{
         });
         if (res.error) throw res.error;
         var c = counts();
-        status("Saved online: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s).");
+        status("Saved shared online backup for approved users: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s).");
         return c;
       } catch(error) {
         status("Save failed: " + (error.message || error));
@@ -26323,7 +26323,7 @@ body.v123PhotoFix input[data-photo]{
         status("Loading online data...");
         var backup = await latestOnlineBackup(sb);
         if (!backup) {
-          status("No online data found yet. Press Save online first on the device with your audits.");
+          status("No shared online backup is visible for " + (user.email || "this login") + ". Run the Supabase shared-access SQL, then save online from the device with the audits.");
           return;
         }
         setAppState(backup.state || backup);
