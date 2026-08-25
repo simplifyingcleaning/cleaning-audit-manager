@@ -825,7 +825,7 @@ td,th{
     <div class="grid two">
 
       <div class="card"><h2>Backup</h2><div class="actions"><button id="exportBackup">Export backup</button><label class="secondary" style="display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);cursor:pointer">Import backup<input id="importBackup" type="file" accept=".json" class="hidden"></label></div></div>
-      <div class="card noPrint"><h2>Online database</h2><p class="help">Use this after importing or changing audits so the same data is available on your other devices.</p><div class="actions"><button id="backupSaveOnline" type="button">Save online</button><button id="backupLoadOnline" class="secondary" type="button">Load online</button></div><div class="help" id="backupOnlineStatus" style="margin-top:10px">Signed-in users can save or load cloud data here.</div></div>
+      <div class="card noPrint"><h2>Online database</h2><p class="help">Use this after importing or changing audits so the same data is available on your other devices.</p><div class="actions"><button id="backupSaveOnline" type="button">Save online</button><button id="backupLoadOnline" class="secondary" type="button">Load online</button><button id="backupCloudStatus" class="secondary" type="button">Cloud status</button></div><div class="help" id="backupOnlineStatus" style="margin-top:10px">Signed-in users can save or load cloud data here.</div></div>
       <div class="card"><h2>Utilities</h2><button class="danger" id="clearData">Clear all data</button></div>
     </div>
   </section>
@@ -26227,6 +26227,15 @@ body.v123PhotoFix input[data-photo]{
       }
       openAuditSystem();
     });
+    function backupCountsFrom(value){
+      var s = value && value.state ? value.state : value;
+      s = s && typeof s === "object" ? s : {};
+      return {
+        locations:Array.isArray(s.locations) ? s.locations.length : 0,
+        audits:Array.isArray(s.audits) ? s.audits.length : 0,
+        actions:Array.isArray(s.actions) ? s.actions.length : 0
+      };
+    }
     function backupScoreForChoice(counts){
       return (counts.audits * 1000000) + (counts.locations * 1000) + counts.actions;
     }
@@ -26313,7 +26322,9 @@ body.v123PhotoFix input[data-photo]{
           backup_name:CLOUD_BACKUP_NAME,
           backup_data:payload
         });
-        if (res.error) throw res.error;
+        if (res.error) {
+          throw new Error((res.error.message || "Supabase insert failed") + (res.error.details ? " Details: " + res.error.details : "") + (res.error.hint ? " Hint: " + res.error.hint : "") + (res.error.code ? " Code: " + res.error.code : ""));
+        }
         var c = counts();
         status("Saved shared online backup for approved users: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s).");
         return c;
@@ -26351,6 +26362,23 @@ body.v123PhotoFix input[data-photo]{
     window.v187OnlineDatabase = {
       save: saveOnlineNow,
       load: loadOnlineNow,
+      status: async function(){
+        var user = await currentUser();
+        if (!user) throw new Error("Not signed in.");
+        var sb = await getClient();
+        var res = await sb.from("audit_backups")
+          .select("backup_data,created_at")
+          .eq("backup_name", CLOUD_BACKUP_NAME)
+          .order("created_at", {ascending:false})
+          .limit(25);
+        if (res.error) throw new Error((res.error.message || "Supabase select failed") + (res.error.details ? " Details: " + res.error.details : "") + (res.error.hint ? " Hint: " + res.error.hint : "") + (res.error.code ? " Code: " + res.error.code : ""));
+        var rows = res.data || [];
+        var best = rows.reduce(function(prev, row){
+          var c = backupCountsFrom(row.backup_data || {});
+          return backupScoreForChoice(c) > backupScoreForChoice(prev) ? c : prev;
+        }, {locations:0,audits:0,actions:0});
+        return {email:user.email || "", rows:rows.length, best:best, local:counts()};
+      },
       signOut: async function(){
         var sb = await getClient();
         await sb.auth.signOut();
@@ -26413,7 +26441,7 @@ body.v123PhotoFix input[data-photo]{
       if (labels[tab]) btn.textContent = labels[tab];
     });
     var headerTitle = document.querySelector("header h1");
-    if (headerTitle) headerTitle.textContent = "Audit Manager - Best Backup Sync 25 Aug v5";
+    if (headerTitle) headerTitle.textContent = "Audit Manager - Best Backup Sync 25 Aug v6";
     document.querySelectorAll(".wrap > .notice").forEach(function(el){
       el.setAttribute("hidden", "hidden");
     });
@@ -26479,6 +26507,7 @@ body.v123PhotoFix input[data-photo]{
   function wire(){
     var save = document.getElementById("backupSaveOnline");
     var load = document.getElementById("backupLoadOnline");
+    var cloudStatus = document.getElementById("backupCloudStatus");
     if (save && !save.dataset.wired) {
       save.dataset.wired = "yes";
       save.addEventListener("click", async function(){
@@ -26486,8 +26515,7 @@ body.v123PhotoFix input[data-photo]{
           if (!window.v187OnlineDatabase || !window.v187OnlineDatabase.save) throw new Error("Online database is still starting. Try again in a moment.");
           setStatus("Saving online...");
           var c = await window.v187OnlineDatabase.save();
-          c = c || counts();
-          setStatus("Saved online: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s).");
+          if (!c) c = counts();
         } catch(error) {
           setStatus("Save failed: " + (error && error.message ? error.message : error));
         }
@@ -26500,10 +26528,22 @@ body.v123PhotoFix input[data-photo]{
           if (!window.v187OnlineDatabase || !window.v187OnlineDatabase.load) throw new Error("Online database is still starting. Try again in a moment.");
           setStatus("Loading online...");
           var c = await window.v187OnlineDatabase.load();
-          c = c || counts();
-          setStatus("Loaded online: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s).");
+          if (!c) c = counts();
         } catch(error) {
           setStatus("Load failed: " + (error && error.message ? error.message : error));
+        }
+      });
+    }
+    if (cloudStatus && !cloudStatus.dataset.wired) {
+      cloudStatus.dataset.wired = "yes";
+      cloudStatus.addEventListener("click", async function(){
+        try {
+          if (!window.v187OnlineDatabase || !window.v187OnlineDatabase.status) throw new Error("Online database is still starting. Try again in a moment.");
+          setStatus("Checking cloud status...");
+          var info = await window.v187OnlineDatabase.status();
+          setStatus("Signed in as " + info.email + ". Cloud rows: " + info.rows + ". Best cloud backup: " + info.best.locations + " location(s), " + info.best.audits + " audit(s), " + info.best.actions + " action(s). This device: " + info.local.locations + " location(s), " + info.local.audits + " audit(s), " + info.local.actions + " action(s).");
+        } catch(error) {
+          setStatus("Cloud status failed: " + (error && error.message ? error.message : error));
         }
       });
     }
