@@ -22162,11 +22162,11 @@ body.v123PhotoFix input[data-photo]{
 
 .v162AuditCard{
   border:1px solid #e2e8f0;
-  border-radius:18px;
+  border-radius:8px;
   background:#fff;
   padding:12px;
   box-shadow:0 4px 14px rgba(15,23,42,.06);
-  scroll-margin-top:120px;
+  scroll-margin-top:96px;
   margin-bottom:12px;
 }
 
@@ -22180,7 +22180,7 @@ body.v123PhotoFix input[data-photo]{
 .v162StatusButton{
   min-height:46px;
   border:2px solid #cbd5e1;
-  border-radius:14px;
+  border-radius:8px;
   background:#fff;
   color:#111827;
   font-size:14px;
@@ -22229,7 +22229,7 @@ body.v123PhotoFix input[data-photo]{
 .v162AuditCard input[type="date"]{
   width:100%;
   border:1px solid #cbd5e1;
-  border-radius:14px;
+  border-radius:8px;
   padding:10px;
   font-size:15px;
   line-height:1.35;
@@ -22243,9 +22243,16 @@ body.v123PhotoFix input[data-photo]{
 
 .v162ChipRow{
   display:flex;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
+  overflow-x:auto;
   gap:6px;
   margin-top:6px;
+  padding-bottom:2px;
+  scrollbar-width:none;
+}
+
+.v162ChipRow::-webkit-scrollbar{
+  display:none;
 }
 
 .v162ChipRow button,
@@ -22259,6 +22266,7 @@ body.v123PhotoFix input[data-photo]{
   font-size:12px;
   font-weight:850;
   cursor:pointer;
+  flex:0 0 auto;
 }
 
 .v162PhotoButton.upload{
@@ -22285,13 +22293,43 @@ body.v123PhotoFix input[data-photo]{
 #v162AuditTools{
   position:sticky;
   top:0;
-  z-index:60;
-  background:#fff;
-  border:1px solid #c7d2fe;
-  border-radius:16px;
+  z-index:30;
+  background:#f8fafc;
+  border:1px solid #dbe4ec;
+  border-radius:8px;
   padding:10px;
   margin:0 0 12px;
-  box-shadow:0 8px 20px rgba(15,23,42,.12);
+  box-shadow:0 8px 18px rgba(15,23,42,.08);
+}
+
+.v162AreaTabs{
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  padding:3px 0 4px;
+  scrollbar-width:none;
+}
+
+.v162AreaTabs::-webkit-scrollbar{
+  display:none;
+}
+
+.v162AreaTabs button{
+  flex:0 0 auto;
+  border:1px solid #cbd5e1;
+  border-radius:999px;
+  background:#fff;
+  color:#172033;
+  min-height:40px;
+  padding:8px 12px;
+  font-size:13px;
+  font-weight:850;
+}
+
+.v162AreaTabs button.active{
+  border-color:#0f766e;
+  background:#0f766e;
+  color:#fff;
 }
 
 #v162AuditTools select,
@@ -22299,15 +22337,37 @@ body.v123PhotoFix input[data-photo]{
   width:100%;
   min-height:42px;
   border:1px solid #cbd5e1;
-  border-radius:14px;
+  border-radius:8px;
   padding:8px 10px;
   box-sizing:border-box;
+}
+
+.v162RoomTools{
+  margin-top:8px;
+}
+
+.v162RoomTools summary{
+  cursor:pointer;
+  color:#334155;
+  font-weight:850;
+  min-height:36px;
+  display:flex;
+  align-items:center;
 }
 
 .v162ToolGrid{
   display:grid;
   grid-template-columns:1fr;
   gap:8px;
+  margin-top:8px;
+}
+
+#saveAudit{
+  position:static!important;
+  bottom:auto!important;
+  z-index:auto!important;
+  width:100%;
+  min-height:48px;
 }
 
 @media(min-width:760px){
@@ -22327,6 +22387,7 @@ body.v123PhotoFix input[data-photo]{
   var SKIRTING = "Skirting boards and floor edges";
   var STATUS = ["Met", "Partially met", "Not met", "N/A"];
   var selectedLocationId = "";
+  var activeAuditArea = "";
 
   function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
   function norm(value){ return text(value).toLowerCase().replace(/\s+/g, " ").replace(/[--]/g, "-"); }
@@ -22462,7 +22523,7 @@ body.v123PhotoFix input[data-photo]{
       var compressed = await compressDataUrl(await fileAsDataUrl(list[i]));
       row.photos.push(await putPhoto(compressed, { rowId:row.id, area:row.area, element:row.element }));
     }
-    renderAuditRowsStable();
+    renderAuditRowsStable(row.id);
   }
 
   async function externaliseRowsPhotos(rows){
@@ -22507,7 +22568,7 @@ body.v123PhotoFix input[data-photo]{
     office:[["floor","Floors"],["work-surfaces","Desks, counter tops and accessible work surfaces"],["office-furniture","Office chairs, chair arms and accessible office furniture"],["workstation-equipment","Computers, keyboards, mouse, monitors and workstation touchpoints"],["shared-equipment","Printers, scanners, telephones and shared office equipment"],["storage-fronts","Cupboards, filing cabinets and storage fronts"],["touchpoints","Doors, handles, switches and frequent touchpoints"],["glazing","Internal glazing, screens and window ledges"],["skirting",SKIRTING],["walls","Walls, ledges and accessible vertical surfaces"],["fixtures","Radiators, pipework and accessible fittings"],["high-level","High-level dust, vents, corners and cobwebs"],["fire-signage","Fire extinguishers, signage and wall-mounted items"],["waste","Waste receptacles / bins"]],
     meeting:[["floor","Floors"],["meeting-surfaces","Meeting tables, counter tops and shared surfaces"],["seating","Seating, chair arms and accessible furniture"],["shared-equipment","Screens, conference equipment, telephones, remotes and shared controls"],["presentation-boards","Whiteboards, presentation boards and marker trays where present"],["touchpoints","Doors, handles, switches and frequent touchpoints"],["glazing","Internal glazing, screens and window ledges"],["skirting",SKIRTING],["walls","Walls, ledges and accessible vertical surfaces"],["fixtures","Radiators, pipework and accessible fittings"],["high-level","High-level dust, vents, corners and cobwebs"],["fire-signage","Fire extinguishers, signage and wall-mounted items"],["waste","Waste receptacles / bins"]],
     corridor:[["floor","Floors"],["touchpoints","Doors, handles, switches, push plates and corridor touchpoints"],["glazing","Internal glazing, screens and window ledges"],["skirting",SKIRTING],["walls","Walls, ledges and accessible vertical surfaces"],["fixtures","Radiators, pipework and accessible fittings"],["high-level","High-level dust, vents, corners and cobwebs"],["fire-signage","Fire extinguishers, signage and wall-mounted items"],["waste","Waste receptacles / bins where present"]],
-    stairs:[["floor","Stairs, floors and landings"],["handrails","Handrails and banisters"],["skirting",SKIRTING],["walls","Walls, ledges and accessible vertical surfaces"],["fixtures","Radiators, pipework and accessible fittings"],["high-level","High-level dust, vents, corners and cobwebs"],["fire-signage","Fire extinguishers, signage and wall-mounted items"],["waste","Waste receptacles / bins where present"]],
+    stairs:[["floor","Stairs, floors and landings"],["handrails","Handrails and banisters"],["glazing","Internal glazing, screens and window ledges"],["skirting",SKIRTING],["walls","Walls, ledges and accessible vertical surfaces"],["fixtures","Radiators, pipework and accessible fittings"],["high-level","High-level dust, vents, corners and cobwebs"],["fire-signage","Fire extinguishers, signage and wall-mounted items"],["waste","Waste receptacles / bins where present"]],
     cleaning:[["floor","Floors"],["storage","Cleaning equipment and storage area"],["coshh","COSHH items labelled, secure and stored correctly"],["colour-coding","Colour-coded equipment clean, separated and stored correctly"],["mop-sink","Mop sink / slop hopper where present"],["sink","Sink, taps, basin and splashback where present"],["touchpoints","Doors, handles and switches"],["skirting",SKIRTING],["walls","Walls, ledges and accessible vertical surfaces"],["fixtures","Radiators, pipework and accessible fittings"],["high-level","High-level dust, vents, corners and cobwebs"],["fire-signage","Fire extinguishers, signage and wall-mounted items"],["waste","Waste receptacles / bins"]],
     entrance:[["floor","Entrance floors and matting"],["glazing","Entrance glass, door glazing and vision panels"],["touchpoints","Entrance doors, handles, push plates and entry touchpoints"],["presentation","Entrance furniture, tables, stands and presentation items"],["sign-in-device","Card machine / sign-in device where present"],["skirting",SKIRTING],["walls","Walls, ledges and accessible vertical surfaces"],["fixtures","Radiators, pipework and accessible fittings"],["high-level","High-level dust, vents, corners and cobwebs"],["fire-signage","Fire extinguishers, signage and wall-mounted items"],["waste","Waste receptacles / bins where present"]],
     general:[["floor","Floors"],["surfaces","Furniture, counter tops and accessible surfaces"],["shared-equipment","Computers, telephones and shared equipment where included"],["touchpoints","Doors, handles, switches and frequent touchpoints"],["glazing","Internal glazing, screens and window ledges"],["skirting",SKIRTING],["walls","Walls, ledges and accessible vertical surfaces"],["fixtures","Radiators, pipework and accessible fittings"],["high-level","High-level dust, vents, corners and cobwebs"],["fire-signage","Fire extinguishers, signage and wall-mounted items"],["waste","Waste receptacles / bins"]]
@@ -22520,7 +22581,7 @@ body.v123PhotoFix input[data-photo]{
     var rows = [];
     (Array.isArray(location.rooms) ? location.rooms : []).forEach(function(room){
       var area = text(room.name) || "General area";
-      var fr = location.type === "dental" ? text(room.fr) : "";
+      var fr = /^(dental|healthcare|health care)$/i.test(text(location.type)) ? text(room.fr) : "";
       checklist(area).forEach(function(pair){ rows.push(makeRow(area, fr, pair[1])); });
     });
     return rows;
@@ -22651,22 +22712,36 @@ body.v123PhotoFix input[data-photo]{
     if (old) old.remove();
     var areas = [];
     draftRowsList().forEach(function(row){ if (row.area && !areas.some(function(a){ return norm(a) === norm(row.area); })) areas.push(row.area); });
+    if (!areas.some(function(area){ return norm(area) === norm(activeAuditArea); })) activeAuditArea = areas[0] || "";
     var panel = document.createElement("div");
     panel.id = "v162AuditTools";
-    panel.innerHTML = '<div class="v162ToolGrid"><div><label>Quick jump between areas</label><select id="v162AreaJump"><option value="">Select area...</option>' + areas.map(function(area){ return '<option value="' + esc(area) + '">' + esc(area) + '</option>'; }).join("") + '</select></div><div><label>Add room during audit</label><input id="v162NewRoom" type="text" placeholder="Room name"><button type="button" id="v162AddRoom" class="v162PhotoButton" style="margin-top:8px">Add room</button></div></div>';
+    panel.innerHTML =
+      '<div class="v162MobileAuditTools">' +
+        '<div><label>Area</label><div class="v162AreaTabs">' + areas.map(function(area){ return '<button type="button" class="' + (norm(area) === norm(activeAuditArea) ? 'active' : '') + '" data-area-tab="' + esc(area) + '">' + esc(area) + '</button>'; }).join("") + '</div></div>' +
+        '<details class="v162RoomTools"><summary>Room tools</summary>' +
+          '<div class="v162ToolGrid">' +
+            '<div><label>Rename current area</label><input id="v162RenameArea" type="text" value="' + esc(activeAuditArea) + '"><button type="button" id="v162RenameAreaBtn" class="v162PhotoButton" style="margin-top:8px">Rename area</button></div>' +
+            '<div><label>Add room during audit</label><input id="v162NewRoom" type="text" placeholder="Room name"><button type="button" id="v162AddRoom" class="v162PhotoButton" style="margin-top:8px">Add room</button></div>' +
+          '</div>' +
+        '</details>' +
+      '</div>';
     wrap.parentNode.insertBefore(panel, wrap);
   }
 
   function suggestions(row){
     var v = norm(row.element);
-    if (/skirting|floor edge/.test(v)) return { obs:["Skirting boards dusty","Floor edges require detail clean"], act:["Clean skirting boards","Detail clean floor edges"] };
-    if (/computer|printer|telephone|keyboard|mouse|card machine|equipment/.test(v)) return { obs:["Shared equipment marked","Equipment dusty"], act:["Clean shared equipment","Dust and wipe touchpoints"] };
-    if (/waste|bin/.test(v)) return { obs:["Bin needs emptying","Bin exterior marked"], act:["Empty and reline bin","Clean bin exterior"] };
-    if (/floor/.test(v)) return { obs:["Floor requires attention","Visible debris noted"], act:["Re-mop/vacuum floor","Remove visible debris"] };
-    return { obs:["Item requires attention","Visible marks noted"], act:["Re-clean item","Supervisor recheck required"] };
+    if (/glazing|glass|window|vision|screen/.test(v)) return { obs:["Finger marks visible","Smears noted","Edges require detail clean","Ledge dusty"], act:["Clean glazing","Polish glass","Detail clean ledge","Supervisor recheck"] };
+    if (/skirting|floor edge/.test(v)) return { obs:["Skirting boards dusty","Floor edges require detail clean","Build-up noted to edges","Low-level detail missed"], act:["Clean skirting boards","Detail clean floor edges","Remove low-level build-up","Add to periodic detail clean"] };
+    if (/computer|printer|telephone|keyboard|mouse|card machine|equipment/.test(v)) return { obs:["Shared equipment marked","Equipment dusty","Touchpoints require wipe","Debris around equipment"], act:["Clean shared equipment","Dust and wipe touchpoints","Clean around equipment","Confirm item is in cleaning scope"] };
+    if (/waste|bin/.test(v)) return { obs:["Bin needs emptying","Bin exterior marked","Liner not fitted correctly","Waste area requires attention"], act:["Empty and reline bin","Clean bin exterior","Replace liner","Review waste collection frequency"] };
+    if (/toilet|sanitary|sink|tap|basin|mirror|dispenser|hand dryer/.test(v)) return { obs:["Marks visible","Requires hygiene clean","Consumables require attention","Detail clean required"], act:["Complete hygiene clean","Clean and polish surface","Restock consumables","Supervisor recheck"] };
+    if (/door|handle|switch|touchpoint|push|lock/.test(v)) return { obs:["Touchpoint marks visible","Finger marks noted","Contact points require wipe","Build-up around handle"], act:["Clean touchpoints","Detail clean around handles","Include in routine check","Supervisor recheck"] };
+    if (/floor|stair|landing|matting/.test(v)) return { obs:["Floor requires attention","Visible debris noted","Edges/corners require detail","Stairs/landing need spot clean"], act:["Re-mop/vacuum floor","Remove visible debris","Detail clean edges/corners","Spot clean stairs/landing"] };
+    if (/high|cobweb|vent|ceiling/.test(v)) return { obs:["High-level dust present","Cobwebs noted","Vent requires dusting","Corners require attention"], act:["Complete high-level dusting","Remove cobwebs","Dust vents","Add to periodic clean"] };
+    return { obs:["Item requires attention","Visible marks noted","Detail clean required","Standard inconsistent"], act:["Re-clean item","Supervisor recheck required","Add to follow-up check","Review with cleaning operative"] };
   }
 
-  function renderAuditRowsStable(){
+  function renderAuditRowsStable(anchorId){
     var wrap = document.getElementById("auditRows");
     if (!wrap) return;
     var rows = draftRowsList();
@@ -22676,7 +22751,11 @@ body.v123PhotoFix input[data-photo]{
       if (tools) tools.remove();
       return;
     }
-    wrap.innerHTML = rows.map(function(row){
+    var areas = [];
+    rows.forEach(function(row){ if (row.area && !areas.some(function(area){ return norm(area) === norm(row.area); })) areas.push(row.area); });
+    if (!areas.some(function(area){ return norm(area) === norm(activeAuditArea); })) activeAuditArea = areas[0] || "";
+    var visibleRows = activeAuditArea ? rows.filter(function(row){ return norm(row.area) === norm(activeAuditArea); }) : rows;
+    wrap.innerHTML = visibleRows.map(function(row){
       var sug = suggestions(row);
       return '<div class="v162AuditCard" data-row-id="' + esc(row.id) + '">' +
         '<strong>' + esc(row.area) + '</strong><div class="help">' + esc(row.element) + (row.fr ? ' | ' + esc(row.fr) : '') + '</div>' +
@@ -22690,6 +22769,12 @@ body.v123PhotoFix input[data-photo]{
     }).join("");
     renderAuditTools();
     resolvePhotos();
+    if (anchorId) {
+      setTimeout(function(){
+        var card = document.querySelector('.v162AuditCard[data-row-id="' + String(anchorId).replace(/"/g, '\\"') + '"]');
+        if (card) card.scrollIntoView({ block:"nearest" });
+      }, 0);
+    }
   }
 
   async function resolvePhotos(){
@@ -22786,8 +22871,8 @@ body.v123PhotoFix input[data-photo]{
       if (e.target && e.target.id === "v162Location") { selectedLocationId = e.target.value; syncHiddenCreateFields(); }
       if (e.target && e.target.id === "v162SummaryPreset") { var box = document.getElementById("v162Summary"); if (box && e.target.value) box.value = fallbackSummaries(e.target.value); syncHiddenCreateFields(); }
       if (e.target && e.target.id === "v162AreaJump" && e.target.value) {
-        var card = Array.from(document.querySelectorAll(".v162AuditCard")).find(function(c){ var row = rowById(c.getAttribute("data-row-id")); return row && norm(row.area) === norm(e.target.value); });
-        if (card) card.scrollIntoView({ behavior:"smooth", block:"start" });
+        activeAuditArea = e.target.value;
+        renderAuditRowsStable();
       }
     }, true);
     document.addEventListener("input", function(e){
@@ -22809,7 +22894,50 @@ body.v123PhotoFix input[data-photo]{
         var input = document.getElementById("v162NewRoom");
         var name = text(input && input.value);
         if (!name) return alert("Enter a room name.");
-        setDraftRows(draftRowsList().concat(checklist(name).map(function(pair){ return makeRow(name, "", pair[1]); })));
+        var loc = getLocation(selectedLocationId);
+        var fr = loc && /^(dental|healthcare|health care)$/i.test(text(loc.type)) ? "FR4" : "";
+        setDraftRows(draftRowsList().concat(checklist(name).map(function(pair){ return makeRow(name, fr, pair[1]); })));
+        if (loc) {
+          try {
+            var sAdd = savedState();
+            var saveLoc = (sAdd.locations || []).find(function(item){ return String(item.id) === String(loc.id); });
+            if (saveLoc) {
+              saveLoc.rooms = Array.isArray(saveLoc.rooms) ? saveLoc.rooms : [];
+              saveLoc.rooms.push({ name:name, fr:fr });
+              commitState(sAdd);
+            }
+          } catch(ignore) {}
+        }
+        activeAuditArea = name;
+        if (input) input.value = "";
+        renderAuditRowsStable();
+        return;
+      }
+      if (t && t.dataset && t.dataset.areaTab !== undefined) {
+        e.preventDefault();
+        activeAuditArea = t.dataset.areaTab;
+        renderAuditRowsStable();
+        return;
+      }
+      if (t && t.id === "v162RenameAreaBtn") {
+        e.preventDefault();
+        var renameInput = document.getElementById("v162RenameArea");
+        var oldName = activeAuditArea;
+        var newName = text(renameInput && renameInput.value);
+        if (!oldName || !newName) return alert("Enter the new area name.");
+        draftRowsList().forEach(function(row){ if (norm(row.area) === norm(oldName)) row.area = newName; });
+        var locForRename = getLocation(selectedLocationId);
+        if (locForRename) {
+          try {
+            var sRename = savedState();
+            var saveRenameLoc = (sRename.locations || []).find(function(item){ return String(item.id) === String(locForRename.id); });
+            if (saveRenameLoc && Array.isArray(saveRenameLoc.rooms)) {
+              saveRenameLoc.rooms.forEach(function(room){ if (norm(room.name) === norm(oldName)) room.name = newName; });
+              commitState(sRename);
+            }
+          } catch(ignore) {}
+        }
+        activeAuditArea = newName;
         renderAuditRowsStable();
         return;
       }
@@ -22820,12 +22948,31 @@ body.v123PhotoFix input[data-photo]{
       if (t.matches(".v162StatusButton")) {
         e.preventDefault();
         row.status = t.getAttribute("data-status");
-        renderAuditRowsStable();
+        card.querySelectorAll(".v162StatusButton").forEach(function(btn){
+          btn.classList.toggle("active", btn === t);
+        });
         return;
       }
-      if (t.dataset.obs) { e.preventDefault(); row.observation = text(row.observation ? row.observation + "\n" + t.dataset.obs : t.dataset.obs); renderAuditRowsStable(); return; }
-      if (t.dataset.act) { e.preventDefault(); row.actionText = text(row.actionText ? row.actionText + "\n" + t.dataset.act : t.dataset.act); if (row.status === "Met") row.status = "Partially met"; renderAuditRowsStable(); return; }
-      if (t.dataset.removePhoto !== undefined) { e.preventDefault(); row.photos.splice(Number(t.dataset.removePhoto), 1); renderAuditRowsStable(); return; }
+      if (t.dataset.obs) {
+        e.preventDefault();
+        row.observation = text(row.observation ? row.observation + "\n" + t.dataset.obs : t.dataset.obs);
+        var obsBox = card.querySelector('[data-field="observation"]');
+        if (obsBox) obsBox.value = row.observation;
+        return;
+      }
+      if (t.dataset.act) {
+        e.preventDefault();
+        row.actionText = text(row.actionText ? row.actionText + "\n" + t.dataset.act : t.dataset.act);
+        if (row.status === "Met") row.status = "Partially met";
+        var actBox = card.querySelector('[data-field="actionText"]');
+        if (actBox) actBox.value = row.actionText;
+        card.querySelectorAll(".v162StatusButton").forEach(function(btn){
+          var active = btn.getAttribute("data-status") === row.status;
+          btn.classList.toggle("active", active);
+        });
+        return;
+      }
+      if (t.dataset.removePhoto !== undefined) { e.preventDefault(); row.photos.splice(Number(t.dataset.removePhoto), 1); renderAuditRowsStable(row.id); return; }
       if (t.dataset.camera !== undefined || t.dataset.upload !== undefined) { e.preventDefault(); makePicker(t.dataset.camera !== undefined, function(files){ addPhotoFiles(row, files).catch(function(err){ alert(err.message || String(err)); }); }); }
     }, true);
   }
@@ -23928,6 +24075,7 @@ body.v123PhotoFix input[data-photo]{
 <script id="v177-audit-workflow-refresh">
 (function(){
   var editingAuditId = "";
+  var activeAuditAreaV177 = "";
   var PHOTO_PREFIX = "idbphoto:";
   var PHOTO_DB = "simplifying_cleaning_photo_store_v162";
   var MAX_PHOTOS_SAFE = 40;
@@ -23955,7 +24103,7 @@ body.v123PhotoFix input[data-photo]{
   function setRows(next){ try { draftRows = next; } catch(e) {} }
   function actions(){ try { return Array.isArray(draftActions) ? draftActions : []; } catch(e) { return []; } }
 
-  function isDentalType(type){ return text(type) === "dental"; }
+  function isDentalType(type){ return /^(dental|healthcare|health care)$/i.test(text(type)); }
   function statusScore(status){ if (status === "Met") return 2; if (status === "Partially met") return 1; if (status === "Not met") return 0; return null; }
   function areaOutcome(score){ if (score === null) return "N/A"; if (score >= 90) return "Met"; if (score >= 75) return "Partially met"; return "Not met"; }
   function frWeight(fr){ var m = text(fr).toUpperCase().match(/FR\s*([1-6])/); return m ? Math.max(1, 6 - Number(m[1])) : 1; }
@@ -24124,56 +24272,56 @@ body.v123PhotoFix input[data-photo]{
     var kind = elementType(row.element);
     var status = row.status || "Met";
     var met = {
-      floor:["Floor clean, dry and free from visible soil at the time of audit."],
-      waste:["Waste receptacle was empty, lined and presentable at the time of audit."],
-      touchpoint:["Touchpoints were visibly clean and presented to the expected standard."],
-      toilet:["Sanitary fixture was visibly clean and presented to the expected standard."],
-      sink:["Sink, taps and splashback were visibly clean at the time of audit."],
-      glass:["Glass or mirror surface was visibly clean and smear-free."],
-      high:["High-level detail was acceptable with no visible dust build-up or cobwebs noted."],
-      low:["Low-level edges, ledges and skirting detail were visibly clean."],
-      fixtures:["Accessible fittings were visibly clean at the time of audit."],
-      equipment:["Equipment/storage area was clean, tidy and safely presented."],
-      general:["Element met the expected standard at the time of audit."]
+      floor:["Floor clean, dry and free from visible soil at the time of audit.","Edges and corners presented well.","No visible debris noted."],
+      waste:["Waste receptacle was empty, lined and presentable at the time of audit.","Bin exterior was clean.","Waste area presented well."],
+      touchpoint:["Touchpoints were visibly clean and presented to the expected standard.","Handles/switches were free from visible marks.","Frequent contact points were well maintained."],
+      toilet:["Sanitary fixture was visibly clean and presented to the expected standard.","Flush area and seat were clean.","No hygiene concerns noted."],
+      sink:["Sink, taps and splashback were visibly clean at the time of audit.","Chrome/taps presented well.","No residue build-up noted."],
+      glass:["Glass or mirror surface was visibly clean and smear-free.","Edges/ledges were clean where accessible.","No finger marks noted."],
+      high:["High-level detail was acceptable with no visible dust build-up or cobwebs noted.","Corners and vents presented well.","No high-level action required."],
+      low:["Low-level edges, ledges and skirting detail were visibly clean.","No dust build-up noted to low-level detail.","Edges presented consistently."],
+      fixtures:["Accessible fittings were visibly clean at the time of audit.","Radiators/pipework presented well.","No visible dust build-up noted."],
+      equipment:["Equipment/storage area was clean, tidy and safely presented.","Items were organised and accessible.","No cleaning storage concern noted."],
+      general:["Element met the expected standard at the time of audit.","Presentation was acceptable.","No corrective action required."]
     };
     var partial = {
-      floor:["Floor was generally acceptable but detail cleaning is required to edges/corners."],
-      waste:["Waste area was partly acceptable but bin detail or emptying requires attention."],
-      touchpoint:["Some touchpoints were acceptable, but further wiping is required for consistency."],
-      toilet:["Sanitary area was partly acceptable but detail cleaning is required."],
-      sink:["Sink area was partly acceptable but marks or splashback detail require attention."],
-      glass:["Glass/mirror was partly acceptable but smears or marks require attention."],
-      high:["Some high-level dust/cobweb detail was noted and should be removed."],
-      low:["Low-level detail requires improvement, including edges, ledges or skirting."],
-      fixtures:["Accessible fittings require further detail cleaning."],
-      equipment:["Equipment/storage was partly acceptable but requires tidying or cleaning detail."],
-      general:["Element was partly acceptable but improvement is required."]
+      floor:["Floor was generally acceptable but detail cleaning is required to edges/corners.","Light debris or marks were noted.","Spot clean required to restore standard."],
+      waste:["Waste area was partly acceptable but bin detail or emptying requires attention.","Bin exterior requires wiping.","Liner or waste level requires attention."],
+      touchpoint:["Some touchpoints were acceptable, but further wiping is required for consistency.","Finger marks noted to frequent contact points.","Detail clean required around handles/switches."],
+      toilet:["Sanitary area was partly acceptable but detail cleaning is required.","Light marks noted to sanitary fixture.","Hygiene clean required to restore standard."],
+      sink:["Sink area was partly acceptable but marks or splashback detail require attention.","Taps or basin require further cleaning.","Residue noted around sink area."],
+      glass:["Glass/mirror was partly acceptable but smears or marks require attention.","Finger marks visible on glazing.","Polish required to improve finish."],
+      high:["Some high-level dust/cobweb detail was noted and should be removed.","Vent/corner detail requires attention.","Add to next periodic detail clean."],
+      low:["Low-level detail requires improvement, including edges, ledges or skirting.","Dust build-up noted to low-level edge.","Detail clean required to skirting/ledge."],
+      fixtures:["Accessible fittings require further detail cleaning.","Dust noted to radiator/pipework.","Wipe accessible fitting surfaces."],
+      equipment:["Equipment/storage was partly acceptable but requires tidying or cleaning detail.","Shared equipment requires wipe down.","Storage presentation needs improvement."],
+      general:["Element was partly acceptable but improvement is required.","Visible marks noted.","Detail clean required."]
     };
     var notMet = {
-      floor:["Floor did not meet the expected standard. Re-clean and supervisor check required."],
-      waste:["Waste standard was not met. Empty, reline and clean the receptacle area."],
-      touchpoint:["Touchpoint standard was not met. Clean and disinfect/wipe relevant contact points."],
-      toilet:["Sanitary fixture did not meet standard. Full re-clean and supervisor check required."],
-      sink:["Sink area did not meet standard. Re-clean basin, taps and splashback."],
-      glass:["Glass/mirror did not meet standard. Clean to remove visible marks or smears."],
-      high:["High-level dust/cobweb standard was not met. Remove build-up and recheck."],
-      low:["Low-level detail did not meet standard. Detail clean edges, ledges or skirting."],
-      fixtures:["Fittings did not meet standard. Detail clean and recheck."],
-      equipment:["Equipment/storage did not meet standard. Clean, tidy and recheck safe storage."],
-      general:["Element did not meet standard. Corrective clean and supervisor recheck required."]
+      floor:["Floor did not meet the expected standard. Re-clean and supervisor check required.","Visible soil/debris present.","Floor presentation below required standard."],
+      waste:["Waste standard was not met. Empty, reline and clean the receptacle area.","Bin overflowing or not presentable.","Waste area requires immediate attention."],
+      touchpoint:["Touchpoint standard was not met. Clean and disinfect/wipe relevant contact points.","Contact points visibly marked.","Immediate touchpoint clean required."],
+      toilet:["Sanitary fixture did not meet standard. Full re-clean and supervisor check required.","Visible hygiene concern noted.","Washroom fixture requires immediate re-clean."],
+      sink:["Sink area did not meet standard. Re-clean basin, taps and splashback.","Residue/marks visible to sink area.","Sink presentation below required standard."],
+      glass:["Glass/mirror did not meet standard. Clean to remove visible marks or smears.","Heavy smearing or visible marks present.","Glazing/mirror finish unacceptable."],
+      high:["High-level dust/cobweb standard was not met. Remove build-up and recheck.","Cobwebs or dust build-up present.","High-level detail overdue."],
+      low:["Low-level detail did not meet standard. Detail clean edges, ledges or skirting.","Dust/build-up visible to low-level edges.","Low-level detail requires corrective clean."],
+      fixtures:["Fittings did not meet standard. Detail clean and recheck.","Accessible fittings visibly dusty/marked.","Radiator/pipework detail below standard."],
+      equipment:["Equipment/storage did not meet standard. Clean, tidy and recheck safe storage.","Storage area untidy or visibly marked.","Equipment requires cleaning and organisation."],
+      general:["Element did not meet standard. Corrective clean and supervisor recheck required.","Standard below expectation.","Immediate improvement required."]
     };
     var actionsMap = {
-      floor:["Re-clean floor and detail edges/corners","Supervisor to recheck floor standard"],
-      waste:["Empty/reline bin and clean exterior","Check waste area at next visit"],
-      touchpoint:["Clean all frequent touchpoints","Supervisor to recheck touchpoints"],
-      toilet:["Full re-clean of sanitary fixture","Supervisor to recheck washroom standard"],
-      sink:["Re-clean sink, taps and splashback","Check sink area after service"],
-      glass:["Clean glass/mirror to remove smears","Recheck glass/mirror finish"],
-      high:["Remove cobwebs/high-level dust","Add high-level detail to next clean"],
-      low:["Detail clean skirting/edges/ledges","Supervisor to recheck low-level detail"],
-      fixtures:["Detail clean accessible fittings","Recheck fixtures next audit"],
-      equipment:["Clean and tidy equipment/storage","Review safe storage and colour coding"],
-      general:["Re-clean item","Supervisor recheck required"]
+      floor:["Re-clean floor and detail edges/corners","Spot clean affected area","Supervisor to recheck floor standard","Add to next periodic floor detail"],
+      waste:["Empty/reline bin and clean exterior","Clean surrounding waste area","Check waste area at next visit","Review bin frequency"],
+      touchpoint:["Clean all frequent touchpoints","Detail clean around handles/switches","Supervisor to recheck touchpoints","Add to routine touchpoint check"],
+      toilet:["Full re-clean of sanitary fixture","Recheck hygiene standard after clean","Supervisor to recheck washroom standard","Review washroom frequency"],
+      sink:["Re-clean sink, taps and splashback","Polish taps/chrome finish","Check sink area after service","Remove residue build-up"],
+      glass:["Clean glass/mirror to remove smears","Polish glazing/mirror finish","Recheck glass/mirror finish","Add glass detail to next clean"],
+      high:["Remove cobwebs/high-level dust","Dust vents/corners","Add high-level detail to next clean","Supervisor to confirm completion"],
+      low:["Detail clean skirting/edges/ledges","Remove low-level dust build-up","Supervisor to recheck low-level detail","Add to periodic detail clean"],
+      fixtures:["Detail clean accessible fittings","Wipe radiator/pipework","Recheck fixtures next audit","Add fittings to detail clean"],
+      equipment:["Clean and tidy equipment/storage","Wipe shared equipment","Review safe storage and colour coding","Supervisor to recheck storage area"],
+      general:["Re-clean item","Supervisor recheck required","Review with cleaning operative","Add to follow-up check"]
     };
     if (status === "N/A") return { obs:["Not applicable to this area or agreed scope."], act:["No action required."] };
     if (status === "Met") return { obs: met[kind] || met.general, act:["No corrective action required."] };
@@ -24253,6 +24401,11 @@ body.v123PhotoFix input[data-photo]{
   }
 
   function enforceLockedElements(list, type){
+    try {
+      if (window.v184ElementLockCheck && typeof window.v184ElementLockCheck.canonicalRows === "function") {
+        return window.v184ElementLockCheck.canonicalRows(list, type);
+      }
+    } catch(e) {}
     return isDentalType(type) ? canonicalDentalRows(list) : list;
   }
 
@@ -24383,10 +24536,41 @@ body.v123PhotoFix input[data-photo]{
   function rowById(id){ return rows().find(function(row){ return String(row.id) === String(id); }) || null; }
   function photoCount(){ return rows().reduce(function(sum,row){ return sum + (Array.isArray(row.photos) ? row.photos.length : 0); }, 0); }
 
-  function renderRowsFresh(){
+  function areaNames(){
+    var names = [];
+    rows().forEach(function(row){ if (row.area && !names.some(function(area){ return norm(area) === norm(row.area); })) names.push(row.area); });
+    return names;
+  }
+
+  function renderAuditToolsFresh(){
     var wrap = E("auditRows");
     if (!wrap || !rows().length) return;
-    wrap.innerHTML = rows().map(function(row){
+    var old = E("v162AuditTools");
+    if (old) old.remove();
+    var areas = areaNames();
+    if (!areas.some(function(area){ return norm(area) === norm(activeAuditAreaV177); })) activeAuditAreaV177 = areas[0] || "";
+    var panel = document.createElement("div");
+    panel.id = "v162AuditTools";
+    panel.innerHTML =
+      '<div class="v162MobileAuditTools">' +
+        '<div><label>Area</label><div class="v162AreaTabs">' + areas.map(function(area){ return '<button type="button" class="' + (norm(area) === norm(activeAuditAreaV177) ? 'active' : '') + '" data-area-tab="' + esc(area) + '">' + esc(area) + '</button>'; }).join("") + '</div></div>' +
+        '<details class="v162RoomTools"><summary>Room tools</summary>' +
+          '<div class="v162ToolGrid">' +
+            '<div><label>Rename current area</label><input id="v162RenameArea" type="text" value="' + esc(activeAuditAreaV177) + '"><button type="button" id="v162RenameAreaBtn" class="v162PhotoButton" style="margin-top:8px">Rename area</button></div>' +
+            '<div><label>Add room during audit</label><input id="v162NewRoom" type="text" placeholder="Room name"><button type="button" id="v162AddRoom" class="v162PhotoButton" style="margin-top:8px">Add room</button></div>' +
+          '</div>' +
+        '</details>' +
+      '</div>';
+    wrap.parentNode.insertBefore(panel, wrap);
+  }
+
+  function renderRowsFresh(anchorId){
+    var wrap = E("auditRows");
+    if (!wrap || !rows().length) return;
+    var areas = areaNames();
+    if (!areas.some(function(area){ return norm(area) === norm(activeAuditAreaV177); })) activeAuditAreaV177 = areas[0] || "";
+    var visibleRows = activeAuditAreaV177 ? rows().filter(function(row){ return norm(row.area) === norm(activeAuditAreaV177); }) : rows();
+    wrap.innerHTML = visibleRows.map(function(row){
       var sug = suggestions(row);
       return '<div class="v162AuditCard" data-row-id="' + esc(row.id) + '">' +
         '<div class="v177AuditHeader"><div><div class="v177Area">' + esc(row.area) + '</div><div class="v177Element">' + esc(row.element) + (row.fr ? ' | ' + esc(row.fr) : '') + '</div></div></div>' +
@@ -24398,7 +24582,14 @@ body.v123PhotoFix input[data-photo]{
           '<div><label>Photos (' + photoCount() + '/' + MAX_PHOTOS_SAFE + ' audit total)</label><div class="v162ChipRow"><button type="button" class="v162PhotoButton" data-camera>Take photo</button><button type="button" class="v162PhotoButton upload" data-upload>Upload photo</button></div><div class="v177PhotoHint">Photos are compressed and saved outside the main audit file to avoid save errors.</div><div class="v162PhotoGrid">' + (row.photos || []).map(function(p,i){ return '<div><img data-photo="' + esc(p) + '" src="' + (/^data:image\//i.test(text(p)) ? esc(p) : '') + '"><button type="button" class="v162RemovePhoto" data-remove-photo="' + i + '">Remove</button></div>'; }).join("") + '</div></div>' +
         '</div></div>';
     }).join("");
+    renderAuditToolsFresh();
     try { if (typeof v163ResolveSavedAuditPhotos === "function") v163ResolveSavedAuditPhotos(); } catch(e) {}
+    if (anchorId) {
+      setTimeout(function(){
+        var card = document.querySelector('.v162AuditCard[data-row-id="' + String(anchorId).replace(/"/g, '\\"') + '"]');
+        if (card) card.scrollIntoView({ block:"nearest" });
+      }, 0);
+    }
   }
 
   function workflowBar(){
@@ -24458,12 +24649,35 @@ body.v123PhotoFix input[data-photo]{
       refreshUi();
       return;
     }
+    if (target.dataset && target.dataset.areaTab !== undefined) {
+      event.preventDefault();
+      activeAuditAreaV177 = target.dataset.areaTab;
+      renderRowsFresh();
+      return;
+    }
+    if (target.id === "v162AddRoom") {
+      setTimeout(function(){
+        var allRows = rows();
+        var last = allRows[allRows.length - 1];
+        if (last && last.area) activeAuditAreaV177 = last.area;
+        renderRowsFresh();
+      }, 0);
+      return;
+    }
+    if (target.id === "v162RenameAreaBtn") {
+      setTimeout(function(){
+        var value = text((E("v162RenameArea") || {}).value);
+        if (value) activeAuditAreaV177 = value;
+        renderRowsFresh();
+      }, 0);
+      return;
+    }
     var card = target.closest && target.closest(".v162AuditCard");
     if (card) {
       var row = rowById(card.getAttribute("data-row-id"));
       if (!row) return;
       if (target.matches(".v162StatusButton")) {
-        setTimeout(renderRowsFresh, 0);
+        setTimeout(function(){ renderRowsFresh(row.id); }, 0);
       }
     }
   }, true);
@@ -25375,6 +25589,7 @@ body.v123PhotoFix input[data-photo]{
     stairs: [
       "Stairs, floors and landings clean, dry and free from visible soil, dust build-up and debris",
       "Handrails and banisters clean",
+      "Internal glazing, screens and window ledges visibly clean where included",
       "Walls, ledges, skirting boards and low-level edges visibly clean",
       "Radiators, pipework and accessible fittings clean",
       "High-level dust, vents, corners and cobwebs removed",
@@ -25448,10 +25663,15 @@ body.v123PhotoFix input[data-photo]{
     var key = commercialAreaKey(area);
     return (COMMERCIAL_LOCKED_ELEMENTS_V184[key] || COMMERCIAL_LOCKED_ELEMENTS_V184.general).slice();
   }
+  function isHealthcareType(type){
+    type = norm(type);
+    return type === "dental" || type === "healthcare" || type === "health care";
+  }
   function lockedElements(type, area){
-    return type === "dental" || type === "healthcare" || type === "health care"
-      ? (lockedDentalElements(area) || lockedCommercialElements(area))
-      : lockedCommercialElements(area);
+    if (isHealthcareType(type)) {
+      return lockedDentalElements(area) || lockedDentalElements("office") || [];
+    }
+    return lockedCommercialElements(area);
   }
   function elementKey(element){
     var value = norm(element);
@@ -25520,7 +25740,7 @@ body.v123PhotoFix input[data-photo]{
     var output = [];
     areas.forEach(function(area){
       var areaRows = list.filter(function(row){ return norm(row.area) === norm(area); });
-      var fr = areaRows.map(function(row){ return text(row.fr).trim(); }).filter(Boolean)[0] || "";
+      var fr = isHealthcareType(type) ? (areaRows.map(function(row){ return text(row.fr).trim(); }).filter(Boolean)[0] || "") : "";
       lockedElements(type, area).forEach(function(element){
         var key = elementKey(element);
         var matches = areaRows.filter(function(row){ return elementKey(row.element) === key; });
@@ -25588,6 +25808,7 @@ body.v123PhotoFix input[data-photo]{
   window.v184ElementLockCheck = {
     commercial: COMMERCIAL_LOCKED_ELEMENTS_V184,
     healthcareDental: window.__LOCKED_DENTAL_ELEMENTS_V176 || {},
+    canonicalRows: canonicalRows,
     templateFor: window.templateFor
   };
 })();
@@ -26426,7 +26647,7 @@ body.v123PhotoFix input[data-photo]{
       if (labels[tab]) btn.textContent = labels[tab];
     });
     var headerTitle = document.querySelector("header h1");
-    if (headerTitle) headerTitle.textContent = "Audit Manager - Single Backup Sync 25 Aug v7";
+    if (headerTitle) headerTitle.textContent = "Audit Manager - Mobile Audit Usability 25 Aug v8";
     document.querySelectorAll(".wrap > .notice").forEach(function(el){
       el.setAttribute("hidden", "hidden");
     });
