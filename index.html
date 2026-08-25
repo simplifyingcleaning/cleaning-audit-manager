@@ -24975,7 +24975,8 @@ body.v123PhotoFix input[data-photo]{
 (function(){
   var SUPABASE_URL = "https://nllvgkrflfqtnfbahvwb.supabase.co";
   var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sbHZna3JmbGZxdG5mYmFodndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNDUwMDQsImV4cCI6MjEwMjYyMTAwNH0.mMXpE0viRy6Eomii9upP6_2BplokYmTX9zpwo7on4p0";
-  var CLOUD_BACKUP_NAME = "live_audit_system_state";
+  var CLOUD_BACKUP_NAME = "live_audit_system_state_v2_single";
+  var LEGACY_BACKUP_NAME = "live_audit_system_state";
   var HOSTED_APP_URL = "https://simplifyingcleaning.github.io/cleaning-audit-manager/";
   var ALLOWED_EMAILS = ["enquiries@simplifyingcleaning.co.uk", "kelly.willett82@gmail.com"];
   var client = null;
@@ -26236,32 +26237,22 @@ body.v123PhotoFix input[data-photo]{
         actions:Array.isArray(s.actions) ? s.actions.length : 0
       };
     }
-    function backupScoreForChoice(counts){
-      return (counts.audits * 1000000) + (counts.locations * 1000) + counts.actions;
-    }
     async function latestOnlineBackup(sb){
       var res = await sb.from("audit_backups")
         .select("backup_data,created_at")
         .eq("backup_name", CLOUD_BACKUP_NAME)
         .order("created_at", {ascending:false})
-        .limit(25);
+        .limit(1);
       if (res.error) throw res.error;
-      if (!res.data || !res.data.length) return null;
-      var best = null;
-      var bestCounts = null;
-      var bestScore = -1;
-      res.data.forEach(function(row){
-        var backup = row.backup_data || {};
-        var c = backupCountsFrom(backup);
-        var score = backupScoreForChoice(c);
-        if (score > bestScore) {
-          best = backup;
-          bestCounts = c;
-          bestScore = score;
-        }
-      });
-      try { window.v187LastOnlineChoice = bestCounts; } catch(ignore) {}
-      return best;
+      if (res.data && res.data.length) return res.data[0].backup_data || {};
+      var legacy = await sb.from("audit_backups")
+        .select("backup_data,created_at")
+        .eq("backup_name", LEGACY_BACKUP_NAME)
+        .order("created_at", {ascending:false})
+        .limit(1);
+      if (legacy.error) throw legacy.error;
+      if (!legacy.data || !legacy.data.length) return null;
+      return legacy.data[0].backup_data || {};
     }
     async function autoLoadOnlineIfUseful(){
       var user = await currentUser();
@@ -26283,7 +26274,7 @@ body.v123PhotoFix input[data-photo]{
       setAppState(backup.state || backup);
       refreshApp();
       var c = counts();
-      status("Loaded best online backup: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)." + (window.v187StorageWarning ? " " + window.v187StorageWarning : ""));
+      status("Loaded online backup: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)." + (window.v187StorageWarning ? " " + window.v187StorageWarning : ""));
     }
     async function saveOnlineNow(){
       try {
@@ -26299,13 +26290,10 @@ body.v123PhotoFix input[data-photo]{
           .select("backup_data,created_at")
           .eq("backup_name", CLOUD_BACKUP_NAME)
           .order("created_at", {ascending:false})
-          .limit(25);
+          .limit(1);
         if (existing.error) throw existing.error;
         if (existing.data && existing.data.length) {
-          var onlineCounts = existing.data.reduce(function(best, row){
-            var c = backupCountsFrom(row.backup_data || {});
-            return backupScoreForChoice(c) > backupScoreForChoice(best) ? c : best;
-          }, {locations:0,audits:0,actions:0});
+          var onlineCounts = backupCountsFrom(existing.data[0].backup_data || {});
           if (onlineCounts.audits > localCounts.audits && !confirm("The online backup has more saved audits (" + onlineCounts.audits + ") than this browser (" + localCounts.audits + "). Save this browser online anyway?")) {
             status("Save online cancelled to protect the larger online backup.");
             return;
@@ -26352,7 +26340,7 @@ body.v123PhotoFix input[data-photo]{
         setAppState(backup.state || backup);
         refreshApp();
         var c = counts();
-        status("Loaded best online backup: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)." + (window.v187StorageWarning ? " " + window.v187StorageWarning : ""));
+        status("Loaded online backup: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)." + (window.v187StorageWarning ? " " + window.v187StorageWarning : ""));
         return c;
       } catch(error) {
         status("Load failed: " + (error.message || error));
@@ -26370,13 +26358,10 @@ body.v123PhotoFix input[data-photo]{
           .select("backup_data,created_at")
           .eq("backup_name", CLOUD_BACKUP_NAME)
           .order("created_at", {ascending:false})
-          .limit(25);
+          .limit(1);
         if (res.error) throw new Error((res.error.message || "Supabase select failed") + (res.error.details ? " Details: " + res.error.details : "") + (res.error.hint ? " Hint: " + res.error.hint : "") + (res.error.code ? " Code: " + res.error.code : ""));
         var rows = res.data || [];
-        var best = rows.reduce(function(prev, row){
-          var c = backupCountsFrom(row.backup_data || {});
-          return backupScoreForChoice(c) > backupScoreForChoice(prev) ? c : prev;
-        }, {locations:0,audits:0,actions:0});
+        var best = rows.length ? backupCountsFrom(rows[0].backup_data || {}) : {locations:0,audits:0,actions:0};
         return {email:user.email || "", rows:rows.length, best:best, local:counts()};
       },
       signOut: async function(){
@@ -26441,7 +26426,7 @@ body.v123PhotoFix input[data-photo]{
       if (labels[tab]) btn.textContent = labels[tab];
     });
     var headerTitle = document.querySelector("header h1");
-    if (headerTitle) headerTitle.textContent = "Audit Manager - Best Backup Sync 25 Aug v6";
+    if (headerTitle) headerTitle.textContent = "Audit Manager - Single Backup Sync 25 Aug v7";
     document.querySelectorAll(".wrap > .notice").forEach(function(el){
       el.setAttribute("hidden", "hidden");
     });
