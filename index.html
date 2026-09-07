@@ -28544,5 +28544,248 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
 })();
 </script>
 
+<script id="v199-shared-online-save-load-fix">
+(function(){
+  var SUPABASE_URL = "https://nllvgkrflfqtnfbahvwb.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sbHZna3JmbGZxdG5mYmFodndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNDUwMDQsImV4cCI6MjEwMjYyMTAwNH0.mMXpE0viRy6Eomii9upP6_2BplokYmTX9zpwo7on4p0";
+  var PRIMARY_BACKUP_NAME = "live_audit_system_state_v2_single";
+  var BACKUP_NAMES = [PRIMARY_BACKUP_NAME, "live_audit_system_state"];
+  var client = null;
+
+  function setStatus(message){
+    var el = document.getElementById("backupOnlineStatus");
+    if (el) el.textContent = message;
+  }
+  function loadSupabaseScript(){
+    return new Promise(function(resolve, reject){
+      if (window.supabase && window.supabase.createClient) return resolve();
+      var existing = document.querySelector('script[src*="supabase-js"],script[data-v187-supabase],script[data-v199-supabase]');
+      if (existing) {
+        existing.addEventListener("load", function(){ resolve(); });
+        existing.addEventListener("error", function(){ reject(new Error("Could not load Supabase.")); });
+        setTimeout(function(){
+          if (window.supabase && window.supabase.createClient) resolve();
+        }, 250);
+        return;
+      }
+      var script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+      script.async = true;
+      script.setAttribute("data-v199-supabase", "yes");
+      script.onload = function(){ resolve(); };
+      script.onerror = function(){ reject(new Error("Could not load Supabase. Check the internet connection.")); };
+      document.head.appendChild(script);
+    });
+  }
+  async function getClient(){
+    if (client) return client;
+    await loadSupabaseScript();
+    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth:{ persistSession:true, autoRefreshToken:true }
+    });
+    return client;
+  }
+  async function currentUser(){
+    var sb = await getClient();
+    var res = await sb.auth.getUser();
+    var user = res && res.data ? res.data.user : null;
+    if (!user) throw new Error("Not signed in. Sign in first, then use Save online or Load online.");
+    return user;
+  }
+  function readStoredState(){
+    var keys = [];
+    try { if (typeof KEY !== "undefined" && KEY) keys.push(KEY); } catch(e) {}
+    keys.push("simplifying_cleaning_v11_stable");
+    keys.push("simplifying_cleaning_audit_manager_v11");
+    keys.push("simplifying_cleaning_audit_manager_v10");
+    for (var i = 0; i < keys.length; i++) {
+      try {
+        var raw = localStorage.getItem(keys[i]);
+        if (!raw) continue;
+        var parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") return parsed.state || parsed;
+      } catch(e) {}
+    }
+    return {};
+  }
+  function appState(){
+    var s = {};
+    try { s = state && typeof state === "object" ? state : {}; } catch(e) {}
+    if (!Array.isArray(s.locations) && !Array.isArray(s.audits) && !Array.isArray(s.actions)) s = readStoredState();
+    s = s && typeof s === "object" ? s : {};
+    s.locations = Array.isArray(s.locations) ? s.locations : [];
+    s.audits = Array.isArray(s.audits) ? s.audits : [];
+    s.actions = Array.isArray(s.actions) ? s.actions : [];
+    s.settings = s.settings && typeof s.settings === "object" ? s.settings : {};
+    return s;
+  }
+  function countsFrom(value){
+    var s = value && value.state ? value.state : value;
+    s = s && typeof s === "object" ? s : {};
+    return {
+      locations:Array.isArray(s.locations) ? s.locations.length : 0,
+      audits:Array.isArray(s.audits) ? s.audits.length : 0,
+      actions:Array.isArray(s.actions) ? s.actions.length : 0
+    };
+  }
+  function writeState(next){
+    next = next && next.state ? next.state : next;
+    next = next && typeof next === "object" ? next : {};
+    next.locations = Array.isArray(next.locations) ? next.locations : [];
+    next.audits = Array.isArray(next.audits) ? next.audits : [];
+    next.actions = Array.isArray(next.actions) ? next.actions : [];
+    next.settings = next.settings && typeof next.settings === "object" ? next.settings : {};
+    try { state = next; } catch(e) {}
+    var keys = ["simplifying_cleaning_v11_stable","simplifying_cleaning_audit_manager_v11"];
+    try { if (typeof KEY !== "undefined" && KEY) keys.unshift(KEY); } catch(e) {}
+    keys.forEach(function(key){
+      try { localStorage.setItem(key, JSON.stringify(next)); } catch(e) {}
+    });
+    try { if (typeof saveState === "function") saveState(); } catch(e) {}
+    ["renderAll","renderDashboard","renderHistory","renderLocations","renderActions","renderBackup"].forEach(function(name){
+      try { if (typeof window[name] === "function") window[name](); } catch(e) {}
+    });
+    try { if (typeof renderAll === "function") renderAll(); } catch(e) {}
+  }
+  function describeCounts(c){
+    return c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)";
+  }
+  function supabaseError(error, fallback){
+    return new Error((error && error.message ? error.message : fallback || "Supabase failed") +
+      (error && error.details ? " Details: " + error.details : "") +
+      (error && error.hint ? " Hint: " + error.hint : "") +
+      (error && error.code ? " Code: " + error.code : ""));
+  }
+  async function latestMeta(sb){
+    var res = await sb.from("audit_backups")
+      .select("id,backup_name,created_at")
+      .in("backup_name", BACKUP_NAMES)
+      .order("created_at", {ascending:false})
+      .limit(1);
+    if (!res.error && res.data && res.data.length) return res.data[0];
+    if (res.error && String(res.error.message || "").toLowerCase().indexOf("timeout") === -1) throw supabaseError(res.error, "Could not check online backup");
+    for (var i = 0; i < BACKUP_NAMES.length; i++) {
+      var fallback = await sb.from("audit_backups")
+        .select("id,backup_name,created_at")
+        .eq("backup_name", BACKUP_NAMES[i])
+        .limit(1);
+      if (fallback.error) throw supabaseError(fallback.error, "Could not check online backup");
+      if (fallback.data && fallback.data.length) return fallback.data[0];
+    }
+    return null;
+  }
+  async function latestBackup(sb){
+    var meta = await latestMeta(sb);
+    if (!meta || !meta.id) return null;
+    var res = await sb.from("audit_backups")
+      .select("backup_data,created_at,backup_name")
+      .eq("id", meta.id)
+      .single();
+    if (res.error) throw supabaseError(res.error, "Could not download online backup");
+    return res.data ? res.data.backup_data : null;
+  }
+  async function saveOnline(){
+    try {
+      var user = await currentUser();
+      var local = appState();
+      var localCounts = countsFrom(local);
+      if (!localCounts.locations && !localCounts.audits && !localCounts.actions) {
+        throw new Error("Save blocked because this device has no audit data showing. Load online first if this is a new device.");
+      }
+      var sb = await getClient();
+      setStatus("Saving online...");
+      var existing = await latestBackup(sb);
+      if (existing) {
+        var onlineCounts = countsFrom(existing);
+        if (onlineCounts.audits > localCounts.audits && !confirm("The online backup has more audits (" + onlineCounts.audits + ") than this device (" + localCounts.audits + "). Save this device online anyway?")) {
+          setStatus("Save cancelled to protect the larger online backup.");
+          return localCounts;
+        }
+      }
+      var payload = {
+        saved_at:new Date().toISOString(),
+        app_version:"v199-shared-online-save-load-fix",
+        state:local
+      };
+      var res = await sb.from("audit_backups").insert({
+        user_id:user.id,
+        backup_name:PRIMARY_BACKUP_NAME,
+        backup_data:payload
+      });
+      if (res.error) throw supabaseError(res.error, "Could not upload online backup");
+      setStatus("Saved online: " + describeCounts(localCounts) + ". Other signed-in devices should press Load online.");
+      return localCounts;
+    } catch(error) {
+      setStatus("Save failed: " + (error && error.message ? error.message : error));
+      throw error;
+    }
+  }
+  async function loadOnline(options){
+    try {
+      options = options || {};
+      await currentUser();
+      if (!options.silent && !confirm("Load the latest shared online backup onto this device?")) return countsFrom(appState());
+      var sb = await getClient();
+      setStatus("Loading online...");
+      var backup = await latestBackup(sb);
+      if (!backup) throw new Error("No online backup was found. Save online from the device that has the 8 audits and 11 locations first.");
+      writeState(backup.state || backup);
+      var loaded = countsFrom(appState());
+      setStatus("Loaded online: " + describeCounts(loaded) + ".");
+      return loaded;
+    } catch(error) {
+      setStatus("Load failed: " + (error && error.message ? error.message : error));
+      throw error;
+    }
+  }
+  async function cloudStatus(){
+    var user = await currentUser();
+    var sb = await getClient();
+    var backup = await latestBackup(sb);
+    return {
+      email:user.email || "",
+      rows:backup ? 1 : 0,
+      best:countsFrom(backup || {}),
+      local:countsFrom(appState())
+    };
+  }
+  function wireButton(id, handler){
+    var button = document.getElementById(id);
+    if (!button || button.dataset.v199Wired) return;
+    button.dataset.v199Wired = "yes";
+    button.addEventListener("click", function(event){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      handler();
+    }, true);
+  }
+  function wire(){
+    window.v187OnlineDatabase = {
+      save:saveOnline,
+      load:loadOnline,
+      status:cloudStatus,
+      signOut:async function(){
+        var sb = await getClient();
+        await sb.auth.signOut();
+      }
+    };
+    window.backupCountsFrom = countsFrom;
+    wireButton("backupSaveOnline", function(){ saveOnline().catch(function(){}); });
+    wireButton("backupLoadOnline", function(){ loadOnline().catch(function(){}); });
+    wireButton("backupCloudStatus", async function(){
+      try {
+        setStatus("Checking cloud status...");
+        var info = await cloudStatus();
+        setStatus("Signed in as " + info.email + ". Online backup: " + describeCounts(info.best) + ". This device: " + describeCounts(info.local) + ".");
+      } catch(error) {
+        setStatus("Cloud status failed: " + (error && error.message ? error.message : error));
+      }
+    });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire);
+  else wire();
+})();
+</script>
+
 </body>
 </html>
