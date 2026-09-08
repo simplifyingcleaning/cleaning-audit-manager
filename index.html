@@ -28787,5 +28787,423 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
 })();
 </script>
 
+<script id="v200-healthcare-elements-backfill-suggestions">
+(function(){
+  /*
+    Healthcare element update requested 8 Sep 2026.
+    Commercial elements are left untouched. Healthcare/dental rooms use this clearer, fuller list.
+    Existing healthcare audits are backfilled with missing elements and new missing lines are marked Met.
+  */
+  var MET_OBSERVATION = "Standard met at the time of audit. The item was visibly clean and no corrective action was required.";
+  var HEALTHCARE_ELEMENTS_V200 = {
+    reception: [
+      "Floors, edges and entrance matting clean, dry and free from visible soil, dust build-up, stains and debris",
+      "Reception desk, counters, payment area and accessible horizontal surfaces visibly clean and free from dust or marks",
+      "Doors, handles, push plates, switches, card machine area and other frequent hand-touch points clean",
+      "Patient seating, chair arms, nearby tables and shared furniture visibly clean, including contact surfaces",
+      "Computers, telephones, keyboards, mouse and reception equipment externally clean where included in the cleaning scope",
+      "Internal glazing, entrance glazing, vision panels, screens and window ledges clean and smear-free where included",
+      "Walls, ledges, skirting boards, corners and low-level edges visibly clean with no dust build-up",
+      "Radiators, pipework, accessible fittings and wall-mounted items visibly clean",
+      "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
+      "Domestic waste emptied; bin externally clean, lined correctly and not overflowing"
+    ],
+    waiting: [
+      "Floors and edges clean, dry and free from visible soil, dust build-up, stains and debris",
+      "Patient seating, chair arms, nearby tables and shared furniture visibly clean, including contact surfaces",
+      "Leaflet holders, display stands, magazines, toys or shared patient items clean where present and included",
+      "Doors, handles, push plates, switches and other frequent hand-touch points clean",
+      "Internal glazing, screens, vision panels and window ledges clean and smear-free where included",
+      "Walls, ledges, skirting boards, corners and low-level edges visibly clean with no dust build-up",
+      "Radiators, pipework, accessible fittings and wall-mounted items visibly clean",
+      "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
+      "Domestic waste emptied; bin externally clean, lined correctly and not overflowing",
+      "Area presentation supports patient safety, with no visible cleaning-related slip, trip or access hazards"
+    ],
+    clinical: [
+      "Clinical room floor and edges clean, dry and free from visible soil, dust build-up, stains and debris within the agreed cleaning scope",
+      "Treatment chair base, stool bases, accessible plinth bases and non-clinical furniture surfaces visibly clean where included",
+      "Worktops, counters, cupboard fronts, drawers and accessible horizontal surfaces visibly clean where included in the cleaning scope",
+      "Doors, handles, switches, push plates, cupboard handles and other frequent hand-touch points clean",
+      "Sink, taps, basin, splashback and hand-wash area visibly clean with no residue or water marks",
+      "Soap, towel, glove, mask and hand hygiene dispensers externally clean and stocked where included",
+      "Domestic waste emptied; bin externally clean, lined correctly and not overflowing",
+      "Clinical waste or sharps containers externally clean, correctly positioned and not overflowing where present",
+      "Walls, ledges, skirting boards, corners, pipework and accessible fittings visibly clean with no dust build-up",
+      "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible"
+    ],
+    decon: [
+      "Decontamination room floor and edges clean, dry and free from visible soil, dust build-up, stains and debris",
+      "Worktops, counters, cupboard fronts, drawers and accessible horizontal surfaces visibly clean where included in the cleaning scope",
+      "Sink, taps, basin, splashback and hand-wash area visibly clean with no residue or water marks",
+      "Doors, handles, switches, push plates, cupboard handles and other frequent hand-touch points clean",
+      "External surfaces of non-specialist equipment and storage fronts visibly clean where included in the cleaning scope",
+      "Domestic waste emptied; bin externally clean, lined correctly and not overflowing",
+      "Clinical waste containers externally clean, correctly positioned and not overflowing where present",
+      "Walls, ledges, skirting boards, corners, pipework and accessible fittings visibly clean with no dust build-up",
+      "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
+      "Cleaning equipment and consumables in the decontamination area stored tidily without creating contamination or access risk"
+    ],
+    toilet: [
+      "Toilet or washroom floor, edges and corners clean, dry and free from visible soil, dust build-up, stains and debris",
+      "Toilet pan, seat, lid, hinges, flush control and surrounding sanitary area clean with no visible soiling",
+      "Sink, taps, basin, overflow and splashback clean with no residue, scale marks or water marks",
+      "Mirror clean and smear-free",
+      "Soap, towel, toilet roll, sanitary and hand hygiene dispensers externally clean and stocked where included",
+      "Hand dryer externally clean, including casing and air outlet where present",
+      "Doors, handles, locks, switches, push plates and other frequent hand-touch points clean",
+      "Walls, ledges, skirting boards, pipework, radiators and accessible fittings visibly clean",
+      "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
+      "Domestic and sanitary waste receptacles emptied where required; bins externally clean, lined correctly and not overflowing"
+    ],
+    corridor: [
+      "Corridor floor and edges clean, dry and free from visible soil, dust build-up, stains and debris",
+      "Doors, handles, push plates, switches, keypads and corridor hand-touch points clean",
+      "Handrails, wall protection rails and grab points visibly clean where present",
+      "Internal glazing, vision panels, screens and window ledges clean and smear-free where included",
+      "Walls, ledges, skirting boards, corners and low-level edges visibly clean with no dust build-up",
+      "Radiators, pipework, accessible fittings, signage and wall-mounted items visibly clean",
+      "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
+      "Domestic waste emptied where present; bins externally clean, lined correctly and not overflowing",
+      "Walkways clear of cleaning-related obstruction, trailing items or avoidable slip/trip hazards"
+    ],
+    stairs: [
+      "Stairs, landings, nosings and floor edges clean, dry and free from visible soil, dust build-up, stains and debris",
+      "Handrails, banisters and grab points clean along the full accessible length",
+      "Doors, handles, switches, push plates and frequent hand-touch points on stair routes clean",
+      "Internal glazing, vision panels and window ledges on stair or landing areas clean and smear-free where included",
+      "Walls, ledges, skirting boards, corners and low-level edges visibly clean with no dust build-up",
+      "Radiators, pipework, accessible fittings, signage and wall-mounted items visibly clean",
+      "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
+      "Stairs and landings clear of cleaning-related obstruction or avoidable slip/trip hazards"
+    ],
+    staff: [
+      "Staff room or kitchen floor and edges clean, dry and free from visible soil, dust build-up, stains and debris",
+      "Tables, chairs, chair arms and shared rest surfaces visibly clean",
+      "Worktops, counters, cupboard fronts, drawers and accessible kitchen surfaces visibly clean",
+      "Sink, taps, basin and splashback clean with no residue or water marks",
+      "External appliance fronts, handles, microwave, fridge, kettle and small appliance exteriors clean where included",
+      "Doors, handles, switches, push plates and other frequent hand-touch points clean",
+      "Walls, ledges, skirting boards, corners and low-level edges visibly clean with no dust build-up",
+      "Radiators, pipework, accessible fittings and wall-mounted items visibly clean",
+      "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
+      "Domestic waste emptied; bin externally clean, lined correctly and not overflowing"
+    ],
+    office: [
+      "Office floor and edges clean, dry and free from visible soil, dust build-up, stains and debris",
+      "Desks, counters, cupboards, filing cabinets and accessible horizontal surfaces visibly clean where included",
+      "Office chairs, chair arms and accessible furniture visibly clean",
+      "Computers, keyboards, mouse, monitors, telephones and workstation touchpoints externally clean where included",
+      "Printers, scanners and shared office equipment externally clean where included",
+      "Doors, handles, switches, push plates and frequent hand-touch points clean",
+      "Internal glazing, screens, vision panels and window ledges clean and smear-free where included",
+      "Walls, ledges, skirting boards, corners and low-level edges visibly clean with no dust build-up",
+      "Radiators, pipework, accessible fittings and wall-mounted items visibly clean",
+      "Domestic waste emptied; bin externally clean, lined correctly and not overflowing"
+    ],
+    cleaning: [
+      "Cleaning cupboard or store floor and edges clean, dry and free from visible soil, dust build-up, stains and debris",
+      "Cleaning equipment clean, serviceable, separated where required and stored safely after use",
+      "COSHH products labelled, closed, secure and stored correctly away from inappropriate items",
+      "Colour-coded cloths, mops and equipment clean, separated and stored to prevent cross-contamination",
+      "Mop sink, slop hopper, sink, taps and splashback clean where present",
+      "Shelving, storage fronts, doors, handles, switches and frequent touchpoints clean",
+      "Walls, ledges, skirting boards, corners, pipework and accessible fittings visibly clean",
+      "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
+      "Waste emptied; bin externally clean, lined correctly and not overflowing where present",
+      "Store kept tidy with clear access and no cleaning-related safety hazard"
+    ],
+    general: [
+      "Floor and edges clean, dry and free from visible soil, dust build-up, stains and debris",
+      "Accessible furniture, counters, fixtures and horizontal surfaces visibly clean",
+      "Doors, handles, switches, push plates and frequent hand-touch points clean",
+      "Internal glazing, screens, vision panels and window ledges clean and smear-free where included",
+      "Walls, ledges, skirting boards, corners and low-level edges visibly clean with no dust build-up",
+      "Radiators, pipework, accessible fittings, signage and wall-mounted items visibly clean",
+      "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
+      "Domestic waste emptied where present; bins externally clean, lined correctly and not overflowing"
+    ]
+  };
+
+  function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
+  function norm(value){ return text(value).toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim(); }
+  function uid(prefix){ try { if (typeof window.uid === "function") return window.uid(prefix); } catch(e) {} return prefix + "_" + Math.random().toString(36).slice(2) + Date.now(); }
+  function stateSafe(){ try { return state || {locations:[],audits:[],actions:[]}; } catch(e) { return {locations:[],audits:[],actions:[]}; } }
+  function isHealthcareType(type){ return /^(dental|healthcare|health care)$/i.test(text(type)); }
+  function areaKey(area){
+    var value = norm(area);
+    if (/decon|decontamination|sterilisation|sterilization|dirty utility|clean utility/.test(value)) return "decon";
+    if (/surgery|surgeries|clinical|treatment|x ray|xray|consult|exam/.test(value)) return "clinical";
+    if (/toilet|washroom|bathroom|\bwc\b/.test(value)) return "toilet";
+    if (/waiting|patient lounge/.test(value)) return "waiting";
+    if (/reception|front desk/.test(value)) return "reception";
+    if (/corridor|hallway|hall\b|passage/.test(value)) return "corridor";
+    if (/stair|landing/.test(value)) return "stairs";
+    if (/staff|kitchen|breakout|canteen|tea point/.test(value)) return "staff";
+    if (/office|admin|manager/.test(value)) return "office";
+    if (/cleaning|cleaner|janitor|cupboard|store|sluice/.test(value)) return "cleaning";
+    return "general";
+  }
+  function healthcareElements(area){
+    var key = areaKey(area);
+    return (HEALTHCARE_ELEMENTS_V200[key] || HEALTHCARE_ELEMENTS_V200.general).slice();
+  }
+  function elementKey(element){
+    var value = norm(element);
+    if (/floor|matting|mop|vacuum|nosing|landing/.test(value) && !/handrail|banister/.test(value)) return "floor";
+    if (/handrail|banister|grab point|grab rail/.test(value)) return "handrail";
+    if (/waste|bin|receptacle|liner|overflowing|sharps|clinical waste|sanitary/.test(value)) return "waste";
+    if (/door|handle|switch|push|touch point|touchpoint|lock|keypad|flush control|cupboard handle/.test(value)) return "touchpoints";
+    if (/toilet pan|toilet seat|toilet lid|hinge|sanitary area/.test(value)) return "toilet-pan";
+    if (/sink|tap|basin|splashback|overflow|hand wash|mop sink|slop hopper/.test(value)) return "sink";
+    if (/mirror/.test(value)) return "mirror";
+    if (/glazing|glass|vision|window|screen|ledge/.test(value) && !/wall|skirting/.test(value)) return "glazing";
+    if (/chair|seating|table|desk|counter|worktop|surface|furniture|plinth|stool/.test(value)) return "surfaces";
+    if (/computer|keyboard|mouse|monitor|telephone|printer|scanner|card machine|equipment/.test(value) && !/cleaning equipment/.test(value)) return "it-equipment";
+    if (/dispenser|soap|towel|toilet roll|hand hygiene|glove|mask|hand dryer/.test(value)) return "dispensers";
+    if (/wall|ledge|skirting|corner|low level|edge|pipework|radiator|fitting|wall mounted|signage/.test(value) && !/high level|vent|cobweb|ceiling/.test(value)) return "low-fixtures";
+    if (/high level|cobweb|vent|ceiling/.test(value)) return "high";
+    if (/cleaning equipment|coshh|colour|color|store|storage|mop/.test(value)) return "cleaning-store";
+    if (/appliance|fridge|microwave|kettle/.test(value)) return "appliances";
+    if (/hazard|slip|trip|access|obstruction|safety/.test(value)) return "safety";
+    return value;
+  }
+  function statusRank(status){
+    if (status === "Not met") return 3;
+    if (status === "Partially met") return 2;
+    if (status === "Met") return 1;
+    return 0;
+  }
+  function bestStatus(rows){
+    var best = "Met";
+    rows.forEach(function(row){ if (statusRank(row.status) > statusRank(best)) best = row.status; });
+    return best;
+  }
+  function mergeUnique(rows, field){
+    var out = [];
+    rows.forEach(function(row){
+      var values = Array.isArray(row[field]) ? row[field] : (text(row[field]) ? [text(row[field])] : []);
+      values.forEach(function(value){ if (text(value) && !out.some(function(existing){ return norm(existing) === norm(value); })) out.push(value); });
+    });
+    return out;
+  }
+  function mergePhotos(rows){
+    var out = [];
+    rows.forEach(function(row){
+      (Array.isArray(row.photos) ? row.photos : []).forEach(function(photo){ if (out.indexOf(photo) === -1) out.push(photo); });
+    });
+    return out.slice(0, 3);
+  }
+  function makeRow(area, fr, element, matches){
+    matches = matches || [];
+    var status = matches.length ? bestStatus(matches) : "Met";
+    var observations = mergeUnique(matches, "observationsV34");
+    var actions = mergeUnique(matches, "actionsV34");
+    var observation = observations.length ? observations.join("\n") : (matches.map(function(row){ return text(row.observation); }).filter(Boolean)[0] || (status === "Met" ? MET_OBSERVATION : ""));
+    var actionText = actions.length ? actions.join("\n") : matches.map(function(row){ return text(row.actionText); }).filter(Boolean).join("\n");
+    return {
+      id: matches[0] && matches[0].id ? matches[0].id : uid("row"),
+      area: area,
+      fr: fr || "",
+      element: element,
+      status: status,
+      observation: observation,
+      actionText: actionText,
+      owner: matches.map(function(row){ return text(row.owner); }).filter(Boolean)[0] || "",
+      targetDate: matches.map(function(row){ return text(row.targetDate); }).filter(Boolean)[0] || "",
+      photos: mergePhotos(matches),
+      observationsV34: observations,
+      actionsV34: actions
+    };
+  }
+  function canonicalRows(list, type, location){
+    list = Array.isArray(list) ? list : [];
+    if (!isHealthcareType(type)) {
+      try {
+        if (window.v184ElementLockCheck && typeof window.v184ElementLockCheck.canonicalRows === "function") return window.v184ElementLockCheck.canonicalRows(list, type);
+      } catch(e) {}
+      return list;
+    }
+    var areas = [];
+    list.forEach(function(row){
+      if (row && row.area && !areas.some(function(area){ return norm(area) === norm(row.area); })) areas.push(row.area);
+    });
+    (Array.isArray(location && location.rooms) ? location.rooms : []).forEach(function(room){
+      var name = text(room && room.name);
+      if (name && !areas.some(function(area){ return norm(area) === norm(name); })) areas.push(name);
+    });
+    var output = [];
+    areas.forEach(function(area){
+      var sourceRows = list.filter(function(row){ return norm(row.area) === norm(area); });
+      var locRoom = (Array.isArray(location && location.rooms) ? location.rooms : []).find(function(room){ return norm(room && room.name) === norm(area); }) || {};
+      var fr = sourceRows.map(function(row){ return text(row.fr); }).filter(Boolean)[0] || text(locRoom.fr);
+      healthcareElements(area).forEach(function(element){
+        var key = elementKey(element);
+        var matches = sourceRows.filter(function(row){ return elementKey(row.element) === key; });
+        output.push(makeRow(area, fr, element, matches));
+      });
+    });
+    return output;
+  }
+  function currentLocation(){
+    var id = "";
+    try { id = text((document.getElementById("v162Location") || document.getElementById("auditLocation") || {}).value); } catch(e) {}
+    return (stateSafe().locations || []).find(function(location){ return String(location.id) === String(id); }) || null;
+  }
+  function refresh(){
+    try { if (typeof saveState === "function") saveState(); } catch(e) {}
+    try { if (typeof renderHistory === "function") renderHistory(); } catch(e) {}
+    try { if (typeof renderDashboard === "function") renderDashboard(); } catch(e) {}
+    try { if (typeof renderActions === "function") renderActions(); } catch(e) {}
+  }
+  function repairCompletedHealthcareAudits(){
+    var s = stateSafe();
+    var changed = false;
+    (s.audits || []).forEach(function(audit){
+      if (!audit || !isHealthcareType(audit.locationType) || !Array.isArray(audit.items)) return;
+      var loc = (s.locations || []).find(function(location){ return String(location.id) === String(audit.locationId); }) || null;
+      var fixed = canonicalRows(audit.items, audit.locationType, loc);
+      var before = JSON.stringify((audit.items || []).map(function(row){ return [row.area,row.element,row.status]; }));
+      var after = JSON.stringify((fixed || []).map(function(row){ return [row.area,row.element,row.status]; }));
+      if (before !== after) {
+        audit.items = fixed;
+        try { audit.score = typeof weightedScore === "function" ? weightedScore(fixed, audit.locationType) : audit.score; } catch(e) {}
+        try { audit.outcome = typeof areaOutcome === "function" ? areaOutcome(audit.score) : audit.outcome; } catch(e) {}
+        try { audit.band = typeof band === "function" ? band(audit.locationType, audit.score) : audit.band; } catch(e) {}
+        audit.v200HealthcareElementsBackfilled = true;
+        audit.v200HealthcareElementsBackfilledAt = new Date().toISOString();
+        changed = true;
+      }
+    });
+    if (changed) refresh();
+    return changed;
+  }
+  function setDraftRows(next){ try { draftRows = next; } catch(e) {} }
+  function applyDraft(){
+    var rows = [];
+    try { rows = Array.isArray(draftRows) ? draftRows : []; } catch(e) {}
+    if (!rows.length) return;
+    var loc = currentLocation();
+    var type = loc && loc.type ? loc.type : "";
+    if (!isHealthcareType(type)) return;
+    setDraftRows(canonicalRows(rows, type, loc));
+  }
+  function suggestionSet(row){
+    var status = row && row.status || "Met";
+    var kind = elementKey(row && row.element);
+    var base = {
+      floor:["Debris or visible soil remains on floor/edges","Floor marks or stains require spot clean","Edges/corners need detail clean","Floor clean, dry and safely presented"],
+      handrail:["Handrail contact surface marked","Banister detail clean required","Build-up visible along rail fixings","Handrails clean along accessible length"],
+      waste:["Bin not emptied or liner incorrect","Bin exterior marked","Waste container overflowing or poorly positioned","Waste container clean, lined and not overflowing"],
+      touchpoints:["Finger marks visible on touchpoints","Handle or switch surround needs detail clean","Frequently touched surface missed","Touchpoints visibly clean"],
+      "toilet-pan":["Visible soiling around toilet fitting","Flush/hinge detail requires cleaning","Sanitary presentation below expected standard","Toilet fitting visibly clean"],
+      sink:["Residue or water marks around taps/basin","Splashback requires cleaning","Hand-wash area below expected presentation","Sink and taps visibly clean"],
+      mirror:["Mirror smeared or marked","Mirror edges require detail clean","Mirror clean and smear-free"],
+      glazing:["Finger marks or smears visible on glass","Window ledge dusty","Vision panel/glass detail required","Glass and ledges visibly clean"],
+      surfaces:["Dust or marks visible on surface","Chair arms/contact surfaces require cleaning","Worktop/counter detail clean needed","Accessible surfaces visibly clean"],
+      "it-equipment":["Keyboard/mouse/telephone externally marked","Shared equipment touchpoints need cleaning","Equipment included in scope was missed","Shared equipment externally clean"],
+      dispensers:["Dispenser casing marked","Consumable dispenser needs restocking/checking","Hand hygiene point presentation requires attention","Dispensers clean and stocked"],
+      "low-fixtures":["Skirting/ledge dust build-up visible","Radiator or pipework requires detail clean","Low-level edge missed","Low-level surfaces and fittings clean"],
+      high:["High-level dust visible","Cobwebs present","Vent or ceiling edge dusty","High-level areas clean where accessible"],
+      "cleaning-store":["Cleaning equipment left untidy","COSHH/storage issue noted","Colour-coded equipment not separated correctly","Cleaning store clean, tidy and safe"],
+      appliances:["Appliance front or handle marked","Microwave/fridge/kettle exterior requires cleaning","Appliance exterior clean where included"],
+      safety:["Cleaning-related access or trip hazard noted","Walkway obstruction requires removal","Area safe and clear at audit"],
+      general:["Visible marks noted","Detail clean required","Presentation below expected healthcare standard","Standard met"]
+    };
+    var actions = {
+      floor:["Re-clean floor including edges and corners","Spot clean visible marks and re-check when dry","Add floor edges to the next detail clean"],
+      handrail:["Clean full accessible handrail length","Detail clean banister fixings and re-check","Add handrails to touchpoint check"],
+      waste:["Empty, clean externally and reline bin","Review waste frequency for this room","Re-position/replace waste container if required"],
+      touchpoints:["Clean handles, switches and frequent hand-touch points","Add touchpoints to cleaner handover check","Supervisor to re-check touchpoints after correction"],
+      "toilet-pan":["Complete hygiene clean of toilet fitting and surrounding area","Detail clean flush, hinges and sanitary contact points","Supervisor to re-check washroom standard"],
+      sink:["Re-clean sink, taps and splashback","Remove residue/water marks and polish fittings","Check hand-wash area during next supervision visit"],
+      mirror:["Clean and polish mirror","Include mirror edges in detail clean"],
+      glazing:["Clean glass/vision panel and polish dry","Clean window ledge or screen frame","Add glazing to periodic/checklist review if recurring"],
+      surfaces:["Clean accessible surfaces and contact points","Detail clean chair arms/furniture touchpoints","Brief cleaner on included surface scope"],
+      "it-equipment":["Clean external equipment touchpoints within agreed scope","Review IT/equipment cleaning responsibility with site contact","Add shared equipment to routine check if included"],
+      dispensers:["Clean dispenser casing and surrounding wall area","Restock/check consumables where included","Report dispenser defect or access issue if present"],
+      "low-fixtures":["Detail clean skirting, ledges, radiator and pipework","Add low-level detailing to periodic clean","Supervisor to re-check low-level build-up"],
+      high:["Remove cobwebs and high-level dust where safely accessible","Add vents/corners to periodic high-level clean","Review access equipment if high-level clean cannot be completed safely"],
+      "cleaning-store":["Tidy cleaning store and separate equipment correctly","Correct COSHH storage/labelling issue","Clean mop sink/slop hopper and equipment after use"],
+      appliances:["Clean external appliance fronts and handles","Add appliance exterior to routine clean where included"],
+      safety:["Remove obstruction and make area safe","Review cleaning method/storage to prevent recurrence","Escalate safety concern to site contact"],
+      general:["Re-clean item and re-check","Discuss recurring issue with cleaning team","Add item to next supervisor check"]
+    };
+    if (status === "Met") return { obs:(base[kind] || base.general).filter(function(x){ return /clean|safe|met|presented/.test(x.toLowerCase()); }).slice(0,3), act:["No action required"] };
+    if (status === "N/A") return { obs:["Not applicable to this room","Outside agreed cleaning scope","Not present at time of audit"], act:["No action required"] };
+    return { obs:(base[kind] || base.general).slice(0,4), act:(actions[kind] || actions.general).slice(0,4) };
+  }
+  function patchSuggestionChips(){
+    var rows = [];
+    try { rows = Array.isArray(draftRows) ? draftRows : []; } catch(e) {}
+    if (!rows.length) return;
+    document.querySelectorAll(".v191AuditCard[data-row-id],.v162AuditCard[data-row-id]").forEach(function(card){
+      var row = rows.find(function(item){ return String(item.id) === String(card.getAttribute("data-row-id")); });
+      if (!row) return;
+      var set = suggestionSet(row);
+      var chips = card.querySelectorAll(".v191Chips,.v162ChipRow");
+      if (chips[0]) chips[0].innerHTML = set.obs.map(function(item){ return '<button type="button" data-v191-obs="' + item.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;") + '" data-obs="' + item.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;") + '">' + item.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") + '</button>'; }).join("");
+      if (chips[1]) chips[1].innerHTML = set.act.map(function(item){ return '<button type="button" data-v191-act="' + item.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;") + '" data-act="' + item.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;") + '">' + item.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") + '</button>'; }).join("");
+    });
+  }
+  function install(){
+    var previous = window.v184ElementLockCheck || {};
+    window.v200HealthcareElements = HEALTHCARE_ELEMENTS_V200;
+    window.v184ElementLockCheck = {
+      commercial: previous.commercial || window.__LOCKED_COMMERCIAL_ELEMENTS_V184 || {},
+      healthcareDental: HEALTHCARE_ELEMENTS_V200,
+      canonicalRows:function(list, type){
+        if (isHealthcareType(type)) {
+          var loc = currentLocation();
+          return canonicalRows(list, type, loc);
+        }
+        return previous && typeof previous.canonicalRows === "function" ? previous.canonicalRows(list, type) : list;
+      },
+      templateFor:function(type, roomName){
+        if (isHealthcareType(type)) return healthcareElements(roomName);
+        if (previous && typeof previous.templateFor === "function") return previous.templateFor(type, roomName);
+        return [];
+      }
+    };
+    var oldTemplateFor = window.templateFor;
+    window.templateFor = function(type, roomName){
+      if (isHealthcareType(type)) return healthcareElements(roomName);
+      return typeof oldTemplateFor === "function" ? oldTemplateFor.apply(this, arguments) : [];
+    };
+    try { templateFor = window.templateFor; } catch(e) {}
+    var oldRender = window.renderAuditRows;
+    window.renderAuditRows = function(){
+      applyDraft();
+      var result = typeof oldRender === "function" ? oldRender.apply(this, arguments) : undefined;
+      setTimeout(patchSuggestionChips, 80);
+      return result;
+    };
+    try { renderAuditRows = window.renderAuditRows; } catch(e) {}
+    var oldLoad = window.v187OnlineDatabase && window.v187OnlineDatabase.load;
+    if (window.v187OnlineDatabase && typeof oldLoad === "function") {
+      window.v187OnlineDatabase.load = async function(){
+        var result = await oldLoad.apply(this, arguments);
+        repairCompletedHealthcareAudits();
+        return result;
+      };
+    }
+    repairCompletedHealthcareAudits();
+    applyDraft();
+    patchSuggestionChips();
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Healthcare Elements 8 Sep v18";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install);
+  else install();
+  document.addEventListener("click", function(event){
+    var target = event.target;
+    if (!target) return;
+    if (target.id === "v162LoadAudit" || target.id === "loadAudit" || (target.dataset && target.dataset.v191Status !== undefined)) {
+      setTimeout(function(){ applyDraft(); patchSuggestionChips(); }, 120);
+    }
+  }, true);
+})();
+</script>
+
 </body>
 </html>
