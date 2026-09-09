@@ -31170,5 +31170,126 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   setTimeout(wire, 1500);
 })();
 </script>
+<script id="v209-report-photo-archive-fallback">
+(function(){
+  var ARCHIVE_KEY = "simplifying_cleaning_photo_archive_v209";
+  var PHOTO_PREFIX = "idbphoto:";
+  function safeSet(key, value){ try { localStorage.setItem(key, value); } catch(e) {} }
+  function safeGet(key){ try { return localStorage.getItem(key) || ""; } catch(e) { return ""; } }
+  function archiveFromBackup(backup){
+    backup = backup || {};
+    var archive = backup.photoArchive || (backup.backup_data && backup.backup_data.photoArchive) || {};
+    return archive && typeof archive === "object" ? archive : {};
+  }
+  function saveArchive(archive){
+    if (!archive || typeof archive !== "object") return;
+    safeSet(ARCHIVE_KEY, JSON.stringify(archive));
+    safeSet("simplifying_cleaning_photo_archive_v208", JSON.stringify(archive));
+  }
+  function loadArchive(){
+    var raw = safeGet(ARCHIVE_KEY) || safeGet("simplifying_cleaning_photo_archive_v208");
+    try { return raw ? JSON.parse(raw) : {}; } catch(e) { return {}; }
+  }
+  function wrapOnline(){
+    if (!window.v187OnlineDatabase || window.v187OnlineDatabase.__v209ArchiveFallback) return;
+    var originalSave = window.v187OnlineDatabase.save;
+    var originalLoad = window.v187OnlineDatabase.load;
+    if (typeof originalSave === "function") {
+      window.v187OnlineDatabase.save = async function(){
+        var result = await originalSave.apply(this, arguments);
+        try {
+          if (window.v208OnlinePhotos && typeof window.v208OnlinePhotos.readPhoto === "function") {
+            var s = typeof state !== "undefined" ? state : {};
+            var archive = {};
+            for (var a = 0; a < ((s && s.audits) || []).length; a++) {
+              var audit = s.audits[a];
+              for (var i = 0; i < ((audit && audit.items) || []).length; i++) {
+                var row = audit.items[i];
+                for (var p = 0; p < ((row && row.photos) || []).length; p++) {
+                  var ref = String(row.photos[p] || "").trim();
+                  if (/^data:image\//i.test(ref)) archive["inline:" + a + ":" + i + ":" + p] = ref;
+                  else if (ref.indexOf(PHOTO_PREFIX) === 0) {
+                    var data = await window.v208OnlinePhotos.readPhoto(ref);
+                    if (data) archive[ref] = data;
+                  }
+                }
+              }
+            }
+            saveArchive(archive);
+          }
+        } catch(e) {}
+        return result;
+      };
+    }
+    if (typeof originalLoad === "function") {
+      window.v187OnlineDatabase.load = async function(){
+        var result = await originalLoad.apply(this, arguments);
+        try {
+          var archive = loadArchive();
+          var status = document.getElementById("backupOnlineStatus");
+          if (status && Object.keys(archive).length) status.textContent += " Report photo fallback ready: " + Object.keys(archive).length + " photo(s).";
+        } catch(e) {}
+        return result;
+      };
+    }
+    window.v187OnlineDatabase.__v209ArchiveFallback = true;
+  }
+  function reportScript(){
+    return "(" + function(archiveKey, oldKey, prefix){
+      function getArchive(){
+        var raw = "";
+        try { raw = localStorage.getItem(archiveKey) || localStorage.getItem(oldKey) || ""; } catch(e) {}
+        try { return raw ? JSON.parse(raw) : {}; } catch(e) { return {}; }
+      }
+      function clean(v){ return String(v || "").trim(); }
+      function resolveFromArchive(){
+        var archive = getArchive();
+        var count = Object.keys(archive).length;
+        var imgs = Array.prototype.slice.call(document.querySelectorAll("img"));
+        imgs.forEach(function(img){
+          var ref = clean(img.getAttribute("src") || img.getAttribute("data-photo") || img.getAttribute("data-src") || img.getAttribute("data-v191-photo"));
+          if (ref.indexOf(prefix) !== 0) return;
+          var data = archive[ref];
+          if (data) img.setAttribute("src", data);
+          else if (!count) {
+            var label = document.createElement("div");
+            label.style.cssText = "border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:8px;padding:8px;font-size:12px";
+            label.textContent = "Photo archive has not been loaded on this device. Open Backup, press Load online, then open this report again.";
+            img.replaceWith(label);
+          }
+        });
+      }
+      var oldPrint = window.print;
+      window.print = function(){ resolveFromArchive(); setTimeout(function(){ oldPrint.call(window); }, 200); };
+      setTimeout(resolveFromArchive, 50);
+      setTimeout(resolveFromArchive, 400);
+      setTimeout(resolveFromArchive, 900);
+    }.toString() + ")(" + JSON.stringify(ARCHIVE_KEY) + "," + JSON.stringify("simplifying_cleaning_photo_archive_v208") + "," + JSON.stringify(PHOTO_PREFIX) + ");";
+  }
+  function inject(win){
+    setTimeout(function(){
+      try {
+        if (!win || !win.document || win.__v209ReportArchiveFallback) return;
+        win.__v209ReportArchiveFallback = true;
+        var script = win.document.createElement("script");
+        script.textContent = reportScript();
+        (win.document.head || win.document.documentElement || win.document.body).appendChild(script);
+      } catch(e) {}
+    }, 20);
+  }
+  function wire(){
+    wrapOnline();
+    var nativeOpen = window.open;
+    if (nativeOpen && !nativeOpen.__v209ArchiveFallback) {
+      window.open = function(){ var win = nativeOpen.apply(window, arguments); inject(win); return win; };
+      window.open.__v209ArchiveFallback = true;
+    }
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Report Photo Fallback 9 Sep v27";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire); else wire();
+  setTimeout(wire, 1600);
+})();
+</script>
 </body>
 </html>
