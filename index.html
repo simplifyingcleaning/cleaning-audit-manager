@@ -31345,5 +31345,117 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   setTimeout(wire, 1700);
 })();
 </script>
+<script id="v211-report-post-close-photo-loader">
+(function(){
+  var PHOTO_PREFIX = "idbphoto:";
+  var DB_NAMES = ["simplifying_cleaning_photo_store_v145", "simplifying_cleaning_photo_store_v1", "simplifying_cleaning_photo_store_v162"];
+  var ARCHIVE_KEYS = ["simplifying_cleaning_photo_archive_v209", "simplifying_cleaning_photo_archive_v208"];
+  function clean(value){ return String(value || "").trim(); }
+  function archive(){
+    for (var i = 0; i < ARCHIVE_KEYS.length; i++) {
+      try {
+        var raw = localStorage.getItem(ARCHIVE_KEYS[i]);
+        if (raw) return JSON.parse(raw) || {};
+      } catch(e) {}
+    }
+    return {};
+  }
+  function openDb(name){
+    return new Promise(function(resolve){
+      if (!window.indexedDB) return resolve(null);
+      var req = indexedDB.open(name, 1);
+      req.onsuccess = function(){
+        var db = req.result;
+        if (!db.objectStoreNames.contains("photos")) { db.close(); resolve(null); return; }
+        resolve(db);
+      };
+      req.onerror = function(){ resolve(null); };
+    });
+  }
+  async function readFromStores(ref){
+    var id = clean(ref).replace(PHOTO_PREFIX, "");
+    if (!id) return "";
+    for (var i = 0; i < DB_NAMES.length; i++) {
+      var db = await openDb(DB_NAMES[i]);
+      if (!db) continue;
+      var data = await new Promise(function(resolve){
+        try {
+          var tx = db.transaction("photos", "readonly");
+          var req = tx.objectStore("photos").get(id);
+          req.onsuccess = function(){ db.close(); resolve(req.result && req.result.dataUrl || ""); };
+          req.onerror = function(){ db.close(); resolve(""); };
+        } catch(e) { try { db.close(); } catch(closeError) {} resolve(""); }
+      });
+      if (data) return data;
+    }
+    return "";
+  }
+  async function resolveReportPhotos(win){
+    try {
+      if (!win || !win.document) return;
+      var doc = win.document;
+      var saved = archive();
+      var imgs = Array.prototype.slice.call(doc.querySelectorAll("img"));
+      await Promise.all(imgs.map(async function(img){
+        var ref = clean(img.getAttribute("data-photo") || img.getAttribute("data-src") || img.getAttribute("data-v191-photo") || img.getAttribute("src"));
+        if (ref.indexOf(PHOTO_PREFIX) !== 0) return;
+        var data = saved[ref] || await readFromStores(ref);
+        if (data) {
+          img.setAttribute("src", data);
+          img.setAttribute("data-photo-loaded", "true");
+          return;
+        }
+        if (!img.getAttribute("data-photo-missing-label")) {
+          img.setAttribute("data-photo-missing-label", "true");
+          var label = doc.createElement("div");
+          label.style.cssText = "border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:8px;padding:8px;font-size:12px";
+          label.textContent = "Photo is saved online, but this report could not match the local photo reference. Press Load online, then open the report again.";
+          img.replaceWith(label);
+        }
+      }));
+    } catch(e) {}
+  }
+  function wrapReportWindow(win){
+    try {
+      if (!win || !win.document || win.__v211PostClosePhotos) return;
+      win.__v211PostClosePhotos = true;
+      var doc = win.document;
+      var nativeClose = doc.close.bind(doc);
+      doc.close = function(){
+        var result = nativeClose();
+        try {
+          var nativePrint = win.print;
+          if (nativePrint && !nativePrint.__v211PostClosePhotos) {
+            win.print = function(){
+              resolveReportPhotos(win).then(function(){ setTimeout(function(){ nativePrint.call(win); }, 250); });
+            };
+            win.print.__v211PostClosePhotos = true;
+          }
+        } catch(e) {}
+        setTimeout(function(){ resolveReportPhotos(win); }, 0);
+        setTimeout(function(){ resolveReportPhotos(win); }, 150);
+        setTimeout(function(){ resolveReportPhotos(win); }, 500);
+        setTimeout(function(){ resolveReportPhotos(win); }, 1200);
+        return result;
+      };
+    } catch(e) {}
+  }
+  function wire(){
+    var nativeOpen = window.open;
+    if (nativeOpen && !nativeOpen.__v211PostClosePhotos) {
+      window.open = function(){
+        var win = nativeOpen.apply(window, arguments);
+        wrapReportWindow(win);
+        return win;
+      };
+      window.open.__v211PostClosePhotos = true;
+    }
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Report Photos Loaded 9 Sep v29";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire); else wire();
+  setTimeout(wire, 1800);
+})();
+</script>
 </body>
 </html>
