@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 
@@ -30920,5 +30920,255 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
 })();
 </script>
 
+<script id="v208-multi-store-report-photo-fix">
+(function(){
+  var DB_NAMES = ["simplifying_cleaning_photo_store_v145", "simplifying_cleaning_photo_store_v1", "simplifying_cleaning_photo_store_v162"];
+  var PHOTO_PREFIX = "idbphoto:";
+  var SUPABASE_URL = "https://nllvgkrflfqtnfbahvwb.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sbHZna3JmbGZxdG5mYmFodndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNDUwMDQsImV4cCI6MjEwMjYyMTAwNH0.mMXpE0viRy6Eomii9upP6_2BplokYmTX9zpwo7on4p0";
+  var BACKUP_NAME = "live_audit_system_state_v2_single";
+  var LEGACY_BACKUP_NAME = "live_audit_system_state";
+  var PRIMARY_DB = "simplifying_cleaning_photo_store_v162";
+  var client = null;
+  function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
+  function clone(value){ try { return JSON.parse(JSON.stringify(value)); } catch(e) { return value; } }
+  function stateSafe(){ try { return state || {locations:[],audits:[],actions:[]}; } catch(e) { return {locations:[],audits:[],actions:[]}; } }
+  function setStatus(message){ var el = document.getElementById("backupOnlineStatus"); if (el) el.textContent = message; }
+  function counts(s){ s = s && s.state ? s.state : s; s = s || {}; return {locations:Array.isArray(s.locations) ? s.locations.length : 0,audits:Array.isArray(s.audits) ? s.audits.length : 0,actions:Array.isArray(s.actions) ? s.actions.length : 0}; }
+  function describe(c){ return c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)"; }
+  function photoId(ref){ return text(ref).replace(PHOTO_PREFIX, ""); }
+  function openDb(name, create){
+    return new Promise(function(resolve, reject){
+      if (!window.indexedDB) return reject(new Error("Photo storage is not available on this device."));
+      var req = indexedDB.open(name, 1);
+      req.onupgradeneeded = function(){ var db = req.result; if (create && !db.objectStoreNames.contains("photos")) db.createObjectStore("photos", {keyPath:"id"}); };
+      req.onsuccess = function(){ var db = req.result; if (!db.objectStoreNames.contains("photos")) { db.close(); resolve(null); return; } resolve(db); };
+      req.onerror = function(){ reject(req.error || new Error("Could not open photo storage.")); };
+    });
+  }
+  async function readPhotoFromDb(name, id){
+    var db = await openDb(name, false).catch(function(){ return null; });
+    if (!db) return "";
+    return await new Promise(function(resolve){
+      try {
+        var tx = db.transaction("photos", "readonly");
+        var req = tx.objectStore("photos").get(id);
+        req.onsuccess = function(){ db.close(); resolve(req.result && req.result.dataUrl || ""); };
+        req.onerror = function(){ db.close(); resolve(""); };
+      } catch(e) { try { db.close(); } catch(closeError) {} resolve(""); }
+    });
+  }
+  async function readPhoto(ref){
+    var id = photoId(ref);
+    if (!id) return "";
+    for (var i = 0; i < DB_NAMES.length; i++) {
+      var data = await readPhotoFromDb(DB_NAMES[i], id);
+      if (data) return data;
+    }
+    return "";
+  }
+  async function writePhoto(dataUrl, meta){
+    if (!/^data:image\//i.test(text(dataUrl))) return "";
+    var db = await openDb(PRIMARY_DB, true);
+    return await new Promise(function(resolve, reject){
+      var id = "photo_" + Math.random().toString(36).slice(2) + Date.now();
+      var tx = db.transaction("photos", "readwrite");
+      tx.objectStore("photos").put({id:id, dataUrl:dataUrl, createdAt:new Date().toISOString(), meta:meta || {}});
+      tx.oncomplete = function(){ db.close(); resolve(PHOTO_PREFIX + id); };
+      tx.onerror = function(){ db.close(); reject(tx.error || new Error("Could not save photo.")); };
+    });
+  }
+  async function buildPhotoArchive(appState){
+    var archive = {};
+    var missing = 0;
+    setStatus("Finding photos on this device...");
+    for (var a = 0; a < ((appState && appState.audits) || []).length; a++) {
+      var audit = appState.audits[a];
+      for (var i = 0; i < ((audit && audit.items) || []).length; i++) {
+        var row = audit.items[i];
+        for (var p = 0; p < ((row && row.photos) || []).length; p++) {
+          var photo = text(row.photos[p]);
+          if (/^data:image\//i.test(photo)) archive["inline:" + a + ":" + i + ":" + p] = photo;
+          else if (photo.indexOf(PHOTO_PREFIX) === 0 && !archive[photo]) {
+            var data = await readPhoto(photo);
+            if (data) archive[photo] = data; else missing++;
+          }
+        }
+      }
+    }
+    return {archive:archive, missing:missing};
+  }
+  async function applyPhotoArchive(appState, archive){
+    var restored = 0;
+    var s = clone(appState || {});
+    archive = archive || {};
+    for (var a = 0; a < ((s && s.audits) || []).length; a++) {
+      var audit = s.audits[a];
+      for (var i = 0; i < ((audit && audit.items) || []).length; i++) {
+        var row = audit.items[i];
+        row.photos = Array.isArray(row.photos) ? row.photos : [];
+        for (var p = 0; p < row.photos.length; p++) {
+          var ref = text(row.photos[p]);
+          var data = /^data:image\//i.test(ref) ? ref : archive[ref] || archive["inline:" + a + ":" + i + ":" + p] || "";
+          if (data) {
+            try { row.photos[p] = await writePhoto(data, {auditId:audit.id, rowId:row.id, area:row.area, element:row.element}); restored++; }
+            catch(e) { row.photos[p] = data; }
+          }
+        }
+        row.photos = row.photos.filter(Boolean);
+      }
+    }
+    s.v208PhotoRestore = {restored:restored, restoredAt:new Date().toISOString()};
+    return {state:s, restored:restored};
+  }
+  function loadSupabaseScript(){
+    return new Promise(function(resolve, reject){
+      if (window.supabase && window.supabase.createClient) return resolve();
+      var existing = document.querySelector('script[src*="supabase-js"],script[data-v187-supabase],script[data-v199-supabase]');
+      if (existing) { existing.addEventListener("load", function(){ resolve(); }); existing.addEventListener("error", function(){ reject(new Error("Could not load Supabase.")); }); setTimeout(function(){ if (window.supabase && window.supabase.createClient) resolve(); }, 250); return; }
+      var script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+      script.async = true;
+      script.onload = function(){ resolve(); };
+      script.onerror = function(){ reject(new Error("Could not load Supabase.")); };
+      document.head.appendChild(script);
+    });
+  }
+  async function getClient(){ if (client) return client; await loadSupabaseScript(); client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}}); return client; }
+  async function currentUser(sb){ var res = await sb.auth.getUser(); var user = res && res.data ? res.data.user : null; if (!user) throw new Error("Not signed in. Sign in first, then try again."); return user; }
+  function supabaseError(error, fallback){ return new Error((error && error.message ? error.message : fallback || "Supabase failed") + (error && error.details ? " Details: " + error.details : "") + (error && error.hint ? " Hint: " + error.hint : "") + (error && error.code ? " Code: " + error.code : "")); }
+  async function latestBackup(sb){
+    var meta = await sb.from("audit_backups").select("id,backup_name,created_at").in("backup_name", [BACKUP_NAME, LEGACY_BACKUP_NAME]).order("created_at", {ascending:false}).limit(1);
+    if (meta.error) throw supabaseError(meta.error, "Could not find online backup");
+    if (!meta.data || !meta.data.length) return null;
+    var row = await sb.from("audit_backups").select("backup_data,created_at,backup_name").eq("id", meta.data[0].id).single();
+    if (row.error) throw supabaseError(row.error, "Could not load online backup");
+    return row.data ? row.data.backup_data : null;
+  }
+  function writeState(next){
+    try { state = next || {}; } catch(e) {}
+    ["simplifying_cleaning_v11_stable","simplifying_cleaning_audit_manager_v11"].forEach(function(key){ try { localStorage.setItem(key, JSON.stringify(next || {})); } catch(e) {} });
+    try { if (typeof KEY !== "undefined" && KEY) localStorage.setItem(KEY, JSON.stringify(next || {})); } catch(e) {}
+    try { if (typeof renderAll === "function") renderAll(); } catch(e) {}
+    try { if (typeof renderHistory === "function") renderHistory(); } catch(e) {}
+    try { if (typeof renderDashboard === "function") renderDashboard(); } catch(e) {}
+    try { if (typeof renderActions === "function") renderActions(); } catch(e) {}
+  }
+  async function saveOnline(){
+    try {
+      var sb = await getClient();
+      var user = await currentUser(sb);
+      var local = stateSafe();
+      var c = counts(local);
+      if (!c.locations && !c.audits && !c.actions) throw new Error("Save blocked because this device has no audit data showing.");
+      var built = await buildPhotoArchive(local);
+      var photoCount = Object.keys(built.archive).length;
+      setStatus("Saving online: found " + photoCount + " photo(s), missing " + built.missing + " old reference(s)...");
+      var payload = {saved_at:new Date().toISOString(), app_version:"v208-multi-store-report-photo-fix", state:local, photoArchive:built.archive, photoArchiveCount:photoCount, missingPhotoRefs:built.missing};
+      var res = await sb.from("audit_backups").insert({user_id:user.id, backup_name:BACKUP_NAME, backup_data:payload});
+      if (res.error) throw supabaseError(res.error, "Could not save online backup");
+      setStatus("Saved online: " + describe(c) + ". Photo archive contains " + photoCount + " photo(s); missing " + built.missing + ".");
+      return c;
+    } catch(error) { setStatus("Save failed: " + (error && error.message ? error.message : error)); throw error; }
+  }
+  async function loadOnline(options){
+    try {
+      options = options || {};
+      var sb = await getClient();
+      await currentUser(sb);
+      if (!options.silent && !confirm("Load the latest shared online backup onto this device, including photos?")) return counts(stateSafe());
+      setStatus("Loading online data and photo archive...");
+      var backup = await latestBackup(sb);
+      if (!backup) throw new Error("No online backup was found.");
+      var archive = backup.photoArchive || {};
+      var restored = await applyPhotoArchive(backup.state || backup, archive);
+      writeState(restored.state);
+      var c = counts(restored.state);
+      setStatus("Loaded online: " + describe(c) + ". Restored " + restored.restored + " photo(s). Online archive had " + Object.keys(archive).length + " photo(s).");
+      return c;
+    } catch(error) { setStatus("Load failed: " + (error && error.message ? error.message : error)); throw error; }
+  }
+  function reportResolverScript(){
+    return "(" + function(dbNames, prefix){
+      function clean(v){ return String(v || "").trim(); }
+      function openDb(name){
+        return new Promise(function(resolve){
+          if (!indexedDB) return resolve(null);
+          var req = indexedDB.open(name, 1);
+          req.onsuccess = function(){ var db = req.result; if (!db.objectStoreNames.contains("photos")) { db.close(); resolve(null); return; } resolve(db); };
+          req.onerror = function(){ resolve(null); };
+        });
+      }
+      async function read(ref){
+        var id = clean(ref).replace(prefix, "");
+        for (var i = 0; i < dbNames.length; i++) {
+          var db = await openDb(dbNames[i]);
+          if (!db) continue;
+          var data = await new Promise(function(resolve){
+            try {
+              var tx = db.transaction("photos", "readonly");
+              var req = tx.objectStore("photos").get(id);
+              req.onsuccess = function(){ db.close(); resolve(req.result && req.result.dataUrl || ""); };
+              req.onerror = function(){ db.close(); resolve(""); };
+            } catch(e) { try { db.close(); } catch(closeError) {} resolve(""); }
+          });
+          if (data) return data;
+        }
+        return "";
+      }
+      async function resolveAll(){
+        var imgs = Array.prototype.slice.call(document.querySelectorAll("img"));
+        await Promise.all(imgs.map(async function(img){
+          var ref = clean(img.getAttribute("src") || img.getAttribute("data-photo") || img.getAttribute("data-src") || img.getAttribute("data-v191-photo"));
+          if (ref.indexOf(prefix) !== 0) return;
+          var data = await read(ref);
+          if (data) img.setAttribute("src", data);
+          else {
+            var label = document.createElement("div");
+            label.style.cssText = "border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:8px;padding:8px;font-size:12px";
+            label.textContent = "Photo could not be loaded on this device. Save online from the device that can see this photo, then load online here.";
+            img.replaceWith(label);
+          }
+        }));
+      }
+      var nativePrint = window.print;
+      window.print = function(){ resolveAll().then(function(){ setTimeout(function(){ nativePrint.call(window); }, 150); }); };
+      setTimeout(resolveAll, 120);
+      setTimeout(resolveAll, 650);
+      window.__v208ReportPhotoResolver = true;
+    }.toString() + ")(" + JSON.stringify(DB_NAMES) + "," + JSON.stringify(PHOTO_PREFIX) + ");";
+  }
+  function injectReportResolver(win){
+    setTimeout(function(){
+      try {
+        if (!win || !win.document || win.__v208ReportPhotoResolverInjected) return;
+        win.__v208ReportPhotoResolverInjected = true;
+        var script = win.document.createElement("script");
+        script.textContent = reportResolverScript();
+        (win.document.head || win.document.documentElement || win.document.body).appendChild(script);
+      } catch(e) {}
+    }, 60);
+  }
+  function wire(){
+    window.v208OnlinePhotos = {save:saveOnline, load:loadOnline, readPhoto:readPhoto};
+    window.v187OnlineDatabase = window.v187OnlineDatabase || {};
+    window.v187OnlineDatabase.save = saveOnline;
+    window.v187OnlineDatabase.load = loadOnline;
+    var save = document.getElementById("backupSaveOnline");
+    var load = document.getElementById("backupLoadOnline");
+    if (save && !save.__v208MultiStore) { save.__v208MultiStore = true; save.addEventListener("click", function(event){ event.preventDefault(); event.stopImmediatePropagation(); saveOnline().catch(function(){}); }, true); }
+    if (load && !load.__v208MultiStore) { load.__v208MultiStore = true; load.addEventListener("click", function(event){ event.preventDefault(); event.stopImmediatePropagation(); loadOnline().catch(function(){}); }, true); }
+    var nativeOpen = window.open;
+    if (nativeOpen && !nativeOpen.__v208MultiStore) {
+      window.open = function(){ var win = nativeOpen.apply(window, arguments); injectReportResolver(win); return win; };
+      window.open.__v208MultiStore = true;
+    }
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Multi Photo Store 9 Sep v26";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire); else wire();
+  setTimeout(wire, 1500);
+})();
+</script>
 </body>
 </html>
