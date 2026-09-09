@@ -30422,5 +30422,117 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
 })();
 </script>
 
+<script id="v205-backfill-previous-actions-reviewed">
+(function(){
+  /*
+    Previous action backfill requested 9 Sep 2026.
+    Existing saved actions are closed as Met when a later completed audit for the same location/area/element is Met.
+  */
+  function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
+  function norm(value){ return text(value).toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim(); }
+  function stateSafe(){
+    try {
+      state = state && typeof state === "object" ? state : {};
+      state.locations = Array.isArray(state.locations) ? state.locations : [];
+      state.audits = Array.isArray(state.audits) ? state.audits : [];
+      state.actions = Array.isArray(state.actions) ? state.actions : [];
+      return state;
+    } catch(e) {
+      return {locations:[],audits:[],actions:[]};
+    }
+  }
+  function isClosed(action){
+    return /^(met|closed|complete|completed|resolved)$/i.test(text(action && action.status));
+  }
+  function actionDate(action){
+    return text(action && (action.raisedDate || action.createdDate || action.date));
+  }
+  function itemKey(area, element){
+    return norm(area) + "|" + norm(element);
+  }
+  function findLaterMatchingAudit(action, audits){
+    var raised = actionDate(action);
+    var actionElement = norm(action.element);
+    var actionArea = norm(action.area);
+    var actionText = norm(action.text);
+    var sorted = audits
+      .filter(function(audit){
+        if (!audit || String(audit.locationId) !== String(action.locationId) || !Array.isArray(audit.items)) return false;
+        if (action.sourceAuditId && String(audit.id) === String(action.sourceAuditId)) return false;
+        if (raised && text(audit.date) && text(audit.date) < raised) return false;
+        return true;
+      })
+      .sort(function(a,b){ return text(a.date).localeCompare(text(b.date)); });
+    for (var i = 0; i < sorted.length; i++) {
+      var audit = sorted[i];
+      var rows = audit.items || [];
+      var exact = rows.find(function(row){
+        return row.status === "Met" && norm(row.area) === actionArea && actionElement && norm(row.element) === actionElement;
+      });
+      if (exact) return {audit:audit, row:exact};
+      var fuzzy = rows.find(function(row){
+        if (row.status !== "Met" || norm(row.area) !== actionArea) return false;
+        var rowElement = norm(row.element);
+        return actionElement && (rowElement.indexOf(actionElement) >= 0 || actionElement.indexOf(rowElement) >= 0);
+      });
+      if (fuzzy) return {audit:audit, row:fuzzy};
+      var byActionText = rows.find(function(row){
+        if (row.status !== "Met" || norm(row.area) !== actionArea || !actionText) return false;
+        var rowElement = norm(row.element);
+        return actionText.indexOf(rowElement.slice(0, 32)) >= 0 || rowElement.indexOf(actionText.slice(0, 32)) >= 0;
+      });
+      if (byActionText) return {audit:audit, row:byActionText};
+    }
+    return null;
+  }
+  function backfill(){
+    var s = stateSafe();
+    var changed = 0;
+    (s.actions || []).forEach(function(action){
+      if (!action || isClosed(action)) return;
+      var match = findLaterMatchingAudit(action, s.audits || []);
+      if (!match) return;
+      action.status = "Met";
+      action.latestAuditStatus = "Met";
+      action.reviewDate = text(match.audit.date) || new Date().toISOString().slice(0,10);
+      action.reviewNotes = "Backfilled as Met because the matching element was marked Met on the later audit dated " + (text(match.audit.date) || "unknown date") + ".";
+      action.reviewedByAuditId = match.audit.id || "";
+      action.reviewedByElement = match.row.element || action.element || "";
+      action.v205BackfilledPreviousAction = true;
+      changed++;
+    });
+    if (changed) {
+      try { if (typeof saveState === "function") saveState(); } catch(e) {}
+      try { localStorage.setItem("simplifying_cleaning_v11_stable", JSON.stringify(s)); } catch(e) {}
+      try { localStorage.setItem("simplifying_cleaning_audit_manager_v11", JSON.stringify(s)); } catch(e) {}
+      try { if (typeof renderActions === "function") renderActions(); } catch(e) {}
+      try { if (typeof renderHistory === "function") renderHistory(); } catch(e) {}
+    }
+    return changed;
+  }
+  function wrapOnlineLoad(){
+    var db = window.v187OnlineDatabase;
+    if (!db || typeof db.load !== "function" || db.__v205BackfillWrapped) return;
+    var oldLoad = db.load;
+    db.load = async function(){
+      var result = await oldLoad.apply(this, arguments);
+      backfill();
+      return result;
+    };
+    db.__v205BackfillWrapped = true;
+  }
+  function install(){
+    var changed = backfill();
+    wrapOnlineLoad();
+    setTimeout(wrapOnlineLoad, 1000);
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Action Backfill 9 Sep v23";
+    if (changed && window.console) console.log("Previous action backfill marked " + changed + " action(s) as Met.");
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install);
+  else install();
+})();
+</script>
+
 </body>
 </html>
