@@ -31291,5 +31291,59 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   setTimeout(wire, 1600);
 })();
 </script>
+<script id="v210-force-photo-online-buttons">
+(function(){
+  function status(message){
+    var el = document.getElementById("backupOnlineStatus");
+    if (el) el.textContent = message;
+  }
+  function findButton(target, id){
+    while (target && target !== document) {
+      if (target.id === id) return target;
+      target = target.parentNode;
+    }
+    return null;
+  }
+  function photoSave(){
+    if (window.v187OnlineDatabase && typeof window.v187OnlineDatabase.save === "function") return window.v187OnlineDatabase.save();
+    if (window.v208OnlinePhotos && typeof window.v208OnlinePhotos.save === "function") return window.v208OnlinePhotos.save();
+    throw new Error("Photo-aware online save is not ready. Refresh the page and try again.");
+  }
+  function photoLoad(){
+    if (window.v187OnlineDatabase && typeof window.v187OnlineDatabase.load === "function") return window.v187OnlineDatabase.load();
+    if (window.v208OnlinePhotos && typeof window.v208OnlinePhotos.load === "function") return window.v208OnlinePhotos.load();
+    throw new Error("Photo-aware online load is not ready. Refresh the page and try again.");
+  }
+  function wire(){
+    if (document.__v210ForcePhotoOnlineButtons) return;
+    document.__v210ForcePhotoOnlineButtons = true;
+    document.addEventListener("click", function(event){
+      var save = findButton(event.target, "backupSaveOnline");
+      var load = findButton(event.target, "backupLoadOnline");
+      if (!save && !load) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (save) {
+        status("Photo-aware save starting. Counting audit photos now...");
+        Promise.resolve().then(photoSave).then(function(){
+          var el = document.getElementById("backupOnlineStatus");
+          if (el && !/photo/i.test(el.textContent || "")) el.textContent += " Photo check completed.";
+        }).catch(function(error){ status("Save failed: " + (error && error.message ? error.message : error)); });
+      }
+      if (load) {
+        status("Photo-aware load starting. Loading audit data and photo archive now...");
+        Promise.resolve().then(photoLoad).then(function(){
+          var el = document.getElementById("backupOnlineStatus");
+          if (el && !/photo/i.test(el.textContent || "")) el.textContent += " Photo restore check completed.";
+        }).catch(function(error){ status("Load failed: " + (error && error.message ? error.message : error)); });
+      }
+    }, true);
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Photo Buttons Fixed 9 Sep v28";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire); else wire();
+  setTimeout(wire, 1700);
+})();
+</script>
 </body>
 </html>
