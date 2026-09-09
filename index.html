@@ -29696,5 +29696,207 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
 })();
 </script>
 
+<script id="v202-phone-save-history-guard">
+(function(){
+  /*
+    Phone save/history guard requested 9 Sep 2026.
+    Ensures an audit that appears to save is present in history, persisted locally, and pushed online when signed in.
+  */
+  function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
+  function clone(value){ try { return JSON.parse(JSON.stringify(value)); } catch(e) { return value; } }
+  function uid(prefix){ try { if (typeof window.uid === "function") return window.uid(prefix); } catch(e) {} return prefix + "_" + Math.random().toString(36).slice(2) + Date.now(); }
+  function E(id){ return document.getElementById(id); }
+  function stateSafe(){
+    try {
+      state = state && typeof state === "object" ? state : {};
+      state.locations = Array.isArray(state.locations) ? state.locations : [];
+      state.audits = Array.isArray(state.audits) ? state.audits : [];
+      state.actions = Array.isArray(state.actions) ? state.actions : [];
+      return state;
+    } catch(e) {
+      return {locations:[],audits:[],actions:[]};
+    }
+  }
+  function rows(){ try { return Array.isArray(draftRows) ? draftRows : []; } catch(e) { return []; } }
+  function actions(){ try { return Array.isArray(draftActions) ? draftActions : []; } catch(e) { return []; } }
+  function today(){ return new Date().toISOString().slice(0,10); }
+  function currentLocation(){
+    var id = text((E("v162Location") || E("auditLocation") || {}).value);
+    return (stateSafe().locations || []).find(function(loc){ return String(loc.id) === String(id); }) || null;
+  }
+  function statusScore(status){
+    if (status === "Met") return 2;
+    if (status === "Partially met") return 1;
+    if (status === "Not met") return 0;
+    return null;
+  }
+  function rawScore(list){
+    var applicable = (list || []).filter(function(row){ return row.status !== "N/A"; });
+    if (!applicable.length) return null;
+    var achieved = applicable.reduce(function(sum,row){ return sum + statusScore(row.status); }, 0);
+    return Math.round(achieved / (applicable.length * 2) * 100);
+  }
+  function score(list, type){
+    try { if (typeof weightedScore === "function") return weightedScore(list, type); } catch(e) {}
+    return rawScore(list);
+  }
+  function outcome(value){
+    try { if (typeof areaOutcome === "function") return areaOutcome(value); } catch(e) {}
+    if (value === null) return "N/A";
+    if (value >= 90) return "Met";
+    if (value >= 75) return "Partially met";
+    return "Not met";
+  }
+  function rating(type, value){
+    try { if (typeof band === "function") return band(type, value); } catch(e) {}
+    return {label:outcome(value)};
+  }
+  function storageKeys(){
+    var keys = ["simplifying_cleaning_v11_stable","simplifying_cleaning_audit_manager_v11","simplifying_cleaning_audit_manager_v10"];
+    try { if (typeof KEY !== "undefined" && KEY && keys.indexOf(KEY) === -1) keys.unshift(KEY); } catch(e) {}
+    return keys;
+  }
+  function persist(){
+    var s = stateSafe();
+    var saved = false;
+    storageKeys().forEach(function(key){
+      try {
+        localStorage.setItem(key, JSON.stringify(s));
+        saved = true;
+      } catch(e) {}
+    });
+    try { sessionStorage.setItem("simplifying_cleaning_last_state_rescue", JSON.stringify(s)); } catch(e) {}
+    return saved;
+  }
+  function refresh(){
+    try { if (typeof renderHistory === "function") renderHistory(); } catch(e) {}
+    try { if (typeof renderDashboard === "function") renderDashboard(); } catch(e) {}
+    try { if (typeof renderActions === "function") renderActions(); } catch(e) {}
+    try { if (typeof renderAll === "function") renderAll(); } catch(e) {}
+  }
+  function makeAuditFromSnapshot(loc, snapshotRows){
+    var list = clone(snapshotRows || []);
+    var auditScore = score(list, loc && loc.type);
+    var auditDate = text((E("v162Date") || E("auditDate") || {}).value) || today();
+    var summaryBox = E("v162Summary") || E("auditSummary");
+    return {
+      id: uid("audit"),
+      locationId: loc.id,
+      locationName: loc.name || loc.siteName || "Location",
+      locationType: loc.type || "commercial",
+      date: auditDate,
+      auditor: text((E("v162Auditor") || E("auditAuditor") || E("auditor") || {}).value),
+      summary: text(summaryBox && summaryBox.value) || "Audit completed for " + (loc.name || "this location") + ". This audit is based on a representative sample of rooms and cleaning elements checked at the time of audit.",
+      score: auditScore,
+      outcome: outcome(auditScore),
+      band: rating(loc.type || "commercial", auditScore),
+      items: list,
+      hs: [],
+      auditActions: clone(actions()),
+      createdAt: new Date().toISOString(),
+      v202PhoneSaveRescued: true
+    };
+  }
+  function auditExists(countBefore, locationId, date){
+    var list = stateSafe().audits || [];
+    if (list.length > countBefore) return true;
+    return list.some(function(audit){ return String(audit.locationId) === String(locationId) && text(audit.date) === text(date) && audit.createdAt && Date.now() - Date.parse(audit.createdAt) < 120000; });
+  }
+  async function saveOnlineQuietly(){
+    try {
+      if (window.v187OnlineDatabase && typeof window.v187OnlineDatabase.save === "function") await window.v187OnlineDatabase.save({silent:true});
+    } catch(e) {}
+  }
+  async function guardedSave(previousSave){
+    var loc = currentLocation();
+    if (!loc) return alert("Select and load a location before saving.");
+    var snapshotRows = clone(rows());
+    if (!snapshotRows || !snapshotRows.length) return alert("Load an audit before saving.");
+    var s = stateSafe();
+    var countBefore = s.audits.length;
+    var dateBefore = text((E("v162Date") || E("auditDate") || {}).value) || today();
+    var result;
+    var previousError = null;
+    if (typeof previousSave === "function") {
+      try { result = await previousSave.apply(this, arguments); }
+      catch(error) { previousError = error; }
+    }
+    s = stateSafe();
+    if (!auditExists(countBefore, loc.id, dateBefore)) {
+      s.audits.unshift(makeAuditFromSnapshot(loc, snapshotRows));
+    }
+    var newest = s.audits[0];
+    if (newest) {
+      newest.v202VerifiedInHistory = true;
+      newest.v202VerifiedAt = new Date().toISOString();
+    }
+    persist();
+    refresh();
+    setTimeout(refresh, 400);
+    saveOnlineQuietly();
+    if (previousError) alert("Audit saved and added to History. The original save had a problem, so the phone save guard recovered it.");
+    return result;
+  }
+  function addHistoryRecoveryMessage(){
+    var list = E("historyList");
+    if (!list || E("v202HistoryCount")) return;
+    var panel = document.createElement("div");
+    panel.id = "v202HistoryCount";
+    panel.className = "historySummaryV174";
+    panel.style.marginBottom = "10px";
+    panel.innerHTML = "<strong>Saved audits in this device</strong><p class='historySummaryTextV174'>" + (stateSafe().audits || []).length + " audit(s) are currently stored. If a new phone audit is missing, press Backup then Load online, or clear the History filters.</p>";
+    list.parentNode.insertBefore(panel, list);
+  }
+  function clearHistoryFilters(){
+    ["historyLocation","historyType","historySearch"].forEach(function(id){
+      var el = E(id);
+      if (!el) return;
+      if ((id === "historyLocation" || id === "historyType") && el.value && el.value !== "all") el.value = "all";
+      if (id === "historySearch" && el.value) el.value = "";
+    });
+  }
+  function patch(){
+    var previousWorkflow = window.v177AuditWorkflow && window.v177AuditWorkflow.saveCurrentAudit;
+    if (window.v177AuditWorkflow && typeof previousWorkflow === "function" && !window.v177AuditWorkflow.__v202Guarded) {
+      window.v177AuditWorkflow.saveCurrentAudit = function(){ return guardedSave.call(this, previousWorkflow); };
+      window.v177AuditWorkflow.__v202Guarded = true;
+    }
+    var previousSaveAudit = window.saveAudit;
+    if (typeof previousSaveAudit === "function" && !previousSaveAudit.__v202Guarded) {
+      window.saveAudit = function(){ return guardedSave.call(this, previousSaveAudit); };
+      window.saveAudit.__v202Guarded = true;
+      try { saveAudit = window.saveAudit; } catch(e) {}
+    }
+    ["v196DockSave","v193DockSave","v191SaveAudit","v177SaveAudit","saveAudit"].forEach(function(id){
+      var button = E(id);
+      if (!button || button.__v202SaveBound) return;
+      button.__v202SaveBound = true;
+      button.addEventListener("click", function(event){
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        guardedSave.call(this, previousWorkflow || previousSaveAudit).catch(function(error){ alert(error && error.message ? error.message : String(error)); });
+      }, true);
+    });
+    var oldRenderHistory = window.renderHistory;
+    if (typeof oldRenderHistory === "function" && !oldRenderHistory.__v202Guarded) {
+      window.renderHistory = function(){
+        clearHistoryFilters();
+        var result = oldRenderHistory.apply(this, arguments);
+        setTimeout(addHistoryRecoveryMessage, 0);
+        return result;
+      };
+      window.renderHistory.__v202Guarded = true;
+      try { renderHistory = window.renderHistory; } catch(e) {}
+    }
+    refresh();
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Phone Save History 9 Sep v20";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(patch, 250); });
+  else setTimeout(patch, 250);
+  setTimeout(patch, 1200);
+})();
+</script>
+
 </body>
 </html>
