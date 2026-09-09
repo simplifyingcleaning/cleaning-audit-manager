@@ -30534,5 +30534,178 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
 })();
 </script>
 
+<script id="v206-online-photo-backup-restore">
+(function(){
+  var SUPABASE_URL = "https://nllvgkrflfqtnfbahvwb.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sbHZna3JmbGZxdG5mYmFodndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNDUwMDQsImV4cCI6MjEwMjYyMTAwNH0.mMXpE0viRy6Eomii9upP6_2BplokYmTX9zpwo7on4p0";
+  var BACKUP_NAME = "live_audit_system_state_v2_single";
+  var LEGACY_BACKUP_NAME = "live_audit_system_state";
+  var PHOTO_DB = "simplifying_cleaning_photo_store_v162";
+  var PHOTO_PREFIX = "idbphoto:";
+  var client = null;
+  function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
+  function clone(value){ try { return JSON.parse(JSON.stringify(value)); } catch(e) { return value; } }
+  function stateSafe(){ try { return state || {locations:[],audits:[],actions:[]}; } catch(e) { return {locations:[],audits:[],actions:[]}; } }
+  function counts(s){ s = s && s.state ? s.state : s; s = s || {}; return {locations:Array.isArray(s.locations) ? s.locations.length : 0,audits:Array.isArray(s.audits) ? s.audits.length : 0,actions:Array.isArray(s.actions) ? s.actions.length : 0}; }
+  function describe(c){ return c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)"; }
+  function setStatus(message){ var el = document.getElementById("backupOnlineStatus"); if (el) el.textContent = message; }
+  function openPhotoDb(){
+    return new Promise(function(resolve, reject){
+      if (!window.indexedDB) return reject(new Error("Photo storage is not available on this device."));
+      var req = indexedDB.open(PHOTO_DB, 1);
+      req.onupgradeneeded = function(){ var db = req.result; if (!db.objectStoreNames.contains("photos")) db.createObjectStore("photos", {keyPath:"id"}); };
+      req.onsuccess = function(){ resolve(req.result); };
+      req.onerror = function(){ reject(req.error || new Error("Could not open photo storage.")); };
+    });
+  }
+  async function readPhoto(ref){
+    var id = text(ref).replace(PHOTO_PREFIX, "");
+    if (!id) return "";
+    var db = await openPhotoDb();
+    return await new Promise(function(resolve, reject){
+      var tx = db.transaction("photos", "readonly");
+      var req = tx.objectStore("photos").get(id);
+      req.onsuccess = function(){ db.close(); resolve(req.result && req.result.dataUrl || ""); };
+      req.onerror = function(){ db.close(); reject(req.error || new Error("Could not read saved photo.")); };
+    });
+  }
+  async function writePhoto(dataUrl, meta){
+    var db = await openPhotoDb();
+    return await new Promise(function(resolve, reject){
+      var id = "photo_" + Math.random().toString(36).slice(2) + Date.now();
+      var tx = db.transaction("photos", "readwrite");
+      tx.objectStore("photos").put({id:id, dataUrl:dataUrl, createdAt:new Date().toISOString(), meta:meta || {}});
+      tx.oncomplete = function(){ db.close(); resolve(PHOTO_PREFIX + id); };
+      tx.onerror = function(){ db.close(); reject(tx.error || new Error("Could not save photo on this device.")); };
+    });
+  }
+  async function hydratePhotosForOnline(appState){
+    var s = clone(appState || stateSafe());
+    var missing = 0;
+    for (var a = 0; a < (s.audits || []).length; a++) {
+      var audit = s.audits[a];
+      for (var i = 0; i < ((audit && audit.items) || []).length; i++) {
+        var row = audit.items[i];
+        row.photos = Array.isArray(row.photos) ? row.photos : [];
+        for (var p = 0; p < row.photos.length; p++) {
+          var photo = text(row.photos[p]);
+          if (photo.indexOf(PHOTO_PREFIX) === 0) {
+            try {
+              var dataUrl = await readPhoto(photo);
+              if (dataUrl) row.photos[p] = dataUrl;
+              else missing++;
+            } catch(e) { missing++; }
+          }
+        }
+        row.photos = row.photos.filter(Boolean);
+      }
+    }
+    s.v206PhotoBackup = {included:true, missing:missing, savedAt:new Date().toISOString()};
+    return {state:s, missing:missing};
+  }
+  async function restorePhotosToThisDevice(appState){
+    var s = clone(appState || {});
+    var restored = 0;
+    for (var a = 0; a < (s.audits || []).length; a++) {
+      var audit = s.audits[a];
+      for (var i = 0; i < ((audit && audit.items) || []).length; i++) {
+        var row = audit.items[i];
+        row.photos = Array.isArray(row.photos) ? row.photos : [];
+        for (var p = 0; p < row.photos.length; p++) {
+          var photo = text(row.photos[p]);
+          if (/^data:image\//i.test(photo)) {
+            try { row.photos[p] = await writePhoto(photo, {auditId:audit.id, rowId:row.id, area:row.area, element:row.element}); restored++; } catch(e) {}
+          }
+        }
+        row.photos = row.photos.filter(Boolean);
+      }
+    }
+    s.v206PhotoRestore = {restored:restored, restoredAt:new Date().toISOString()};
+    return {state:s, restored:restored};
+  }
+  function loadSupabaseScript(){
+    return new Promise(function(resolve, reject){
+      if (window.supabase && window.supabase.createClient) return resolve();
+      var existing = document.querySelector('script[src*="supabase-js"],script[data-v187-supabase],script[data-v199-supabase]');
+      if (existing) { existing.addEventListener("load", function(){ resolve(); }); existing.addEventListener("error", function(){ reject(new Error("Could not load Supabase.")); }); setTimeout(function(){ if (window.supabase && window.supabase.createClient) resolve(); }, 250); return; }
+      var script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+      script.async = true;
+      script.onload = function(){ resolve(); };
+      script.onerror = function(){ reject(new Error("Could not load Supabase.")); };
+      document.head.appendChild(script);
+    });
+  }
+  async function getClient(){ if (client) return client; await loadSupabaseScript(); client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}}); return client; }
+  async function currentUser(sb){ var res = await sb.auth.getUser(); var user = res && res.data ? res.data.user : null; if (!user) throw new Error("Not signed in. Sign in first, then try again."); return user; }
+  function supabaseError(error, fallback){ return new Error((error && error.message ? error.message : fallback || "Supabase failed") + (error && error.details ? " Details: " + error.details : "") + (error && error.hint ? " Hint: " + error.hint : "") + (error && error.code ? " Code: " + error.code : "")); }
+  async function latestBackup(sb){
+    var meta = await sb.from("audit_backups").select("id,backup_name,created_at").in("backup_name", [BACKUP_NAME, LEGACY_BACKUP_NAME]).order("created_at", {ascending:false}).limit(1);
+    if (meta.error) throw supabaseError(meta.error, "Could not find online backup");
+    if (!meta.data || !meta.data.length) return null;
+    var row = await sb.from("audit_backups").select("backup_data,created_at,backup_name").eq("id", meta.data[0].id).single();
+    if (row.error) throw supabaseError(row.error, "Could not load online backup");
+    return row.data ? row.data.backup_data : null;
+  }
+  function writeState(next){
+    next = next && next.state ? next.state : next;
+    next = next || {};
+    try { state = next; } catch(e) {}
+    ["simplifying_cleaning_v11_stable","simplifying_cleaning_audit_manager_v11"].forEach(function(key){ try { localStorage.setItem(key, JSON.stringify(next)); } catch(e) {} });
+    try { if (typeof KEY !== "undefined" && KEY) localStorage.setItem(KEY, JSON.stringify(next)); } catch(e) {}
+    try { if (typeof renderAll === "function") renderAll(); } catch(e) {}
+    try { if (typeof renderHistory === "function") renderHistory(); } catch(e) {}
+    try { if (typeof renderDashboard === "function") renderDashboard(); } catch(e) {}
+    try { if (typeof renderActions === "function") renderActions(); } catch(e) {}
+  }
+  async function saveOnlineWithPhotos(){
+    try {
+      var sb = await getClient();
+      var user = await currentUser(sb);
+      var local = stateSafe();
+      var localCounts = counts(local);
+      if (!localCounts.locations && !localCounts.audits && !localCounts.actions) throw new Error("Save blocked because this device has no audit data showing.");
+      setStatus("Saving online with photos...");
+      var hydrated = await hydratePhotosForOnline(local);
+      var res = await sb.from("audit_backups").insert({user_id:user.id, backup_name:BACKUP_NAME, backup_data:{saved_at:new Date().toISOString(), app_version:"v206-online-photo-backup-restore", state:hydrated.state}});
+      if (res.error) throw supabaseError(res.error, "Could not save online backup");
+      setStatus("Saved online with photos: " + describe(localCounts) + (hydrated.missing ? ". " + hydrated.missing + " old photo reference(s) could not be read on this device." : "."));
+      return localCounts;
+    } catch(error) { setStatus("Save failed: " + (error && error.message ? error.message : error)); throw error; }
+  }
+  async function loadOnlineWithPhotos(options){
+    try {
+      options = options || {};
+      var sb = await getClient();
+      await currentUser(sb);
+      if (!options.silent && !confirm("Load the latest shared online backup onto this device, including photos?")) return counts(stateSafe());
+      setStatus("Loading online data and photos...");
+      var backup = await latestBackup(sb);
+      if (!backup) throw new Error("No online backup was found.");
+      var restored = await restorePhotosToThisDevice(backup.state || backup);
+      writeState(restored.state);
+      var c = counts(restored.state);
+      setStatus("Loaded online: " + describe(c) + ". Restored " + restored.restored + " photo(s) onto this device.");
+      return c;
+    } catch(error) { setStatus("Load failed: " + (error && error.message ? error.message : error)); throw error; }
+  }
+  function wire(){
+    window.v206OnlinePhotos = {save:saveOnlineWithPhotos, load:loadOnlineWithPhotos};
+    window.v187OnlineDatabase = window.v187OnlineDatabase || {};
+    window.v187OnlineDatabase.save = saveOnlineWithPhotos;
+    window.v187OnlineDatabase.load = loadOnlineWithPhotos;
+    var save = document.getElementById("backupSaveOnline");
+    var load = document.getElementById("backupLoadOnline");
+    if (save && !save.__v206PhotoSave) { save.__v206PhotoSave = true; save.addEventListener("click", function(event){ event.preventDefault(); event.stopImmediatePropagation(); saveOnlineWithPhotos().catch(function(){}); }, true); }
+    if (load && !load.__v206PhotoLoad) { load.__v206PhotoLoad = true; load.addEventListener("click", function(event){ event.preventDefault(); event.stopImmediatePropagation(); loadOnlineWithPhotos().catch(function(){}); }, true); }
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Online Photos 9 Sep v24";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire);
+  else wire();
+  setTimeout(wire, 1200);
+})();
+</script>
+
 </body>
 </html>
