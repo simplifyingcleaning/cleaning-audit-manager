@@ -31457,5 +31457,121 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   setTimeout(wire, 1800);
 })();
 </script>
+<script id="v212-report-print-photo-gate">
+(function(){
+  var PHOTO_PREFIX = "idbphoto:";
+  var DB_NAMES = ["simplifying_cleaning_photo_store_v145", "simplifying_cleaning_photo_store_v1", "simplifying_cleaning_photo_store_v162"];
+  var ARCHIVE_KEYS = ["simplifying_cleaning_photo_archive_v209", "simplifying_cleaning_photo_archive_v208"];
+  function clean(value){ return String(value || "").trim(); }
+  function getArchive(){
+    for (var i = 0; i < ARCHIVE_KEYS.length; i++) {
+      try {
+        var raw = localStorage.getItem(ARCHIVE_KEYS[i]);
+        if (raw) return JSON.parse(raw) || {};
+      } catch(e) {}
+    }
+    return {};
+  }
+  function openDb(name){
+    return new Promise(function(resolve){
+      if (!window.indexedDB) return resolve(null);
+      var req = indexedDB.open(name, 1);
+      req.onsuccess = function(){
+        var db = req.result;
+        if (!db.objectStoreNames.contains("photos")) { db.close(); resolve(null); return; }
+        resolve(db);
+      };
+      req.onerror = function(){ resolve(null); };
+    });
+  }
+  async function readFromIndexedDb(ref){
+    var id = clean(ref).replace(PHOTO_PREFIX, "");
+    if (!id) return "";
+    for (var i = 0; i < DB_NAMES.length; i++) {
+      var db = await openDb(DB_NAMES[i]);
+      if (!db) continue;
+      var data = await new Promise(function(resolve){
+        try {
+          var tx = db.transaction("photos", "readonly");
+          var req = tx.objectStore("photos").get(id);
+          req.onsuccess = function(){ db.close(); resolve(req.result && req.result.dataUrl || ""); };
+          req.onerror = function(){ db.close(); resolve(""); };
+        } catch(e) { try { db.close(); } catch(closeError) {} resolve(""); }
+      });
+      if (data) return data;
+    }
+    return "";
+  }
+  function photoRefFrom(img){
+    var attrs = ["data-photo", "data-src", "data-v191-photo", "src"];
+    for (var i = 0; i < attrs.length; i++) {
+      var value = clean(img.getAttribute(attrs[i]));
+      if (value.indexOf(PHOTO_PREFIX) === 0) return value;
+    }
+    return "";
+  }
+  async function resolveReportPhotos(win){
+    try {
+      if (!win || win.closed || !win.document) return 0;
+      var doc = win.document;
+      var archive = getArchive();
+      var imgs = Array.prototype.slice.call(doc.querySelectorAll("img"));
+      var loaded = 0;
+      for (var i = 0; i < imgs.length; i++) {
+        var img = imgs[i];
+        var ref = photoRefFrom(img);
+        if (!ref || img.getAttribute("data-v212-loaded") === "true") continue;
+        var data = archive[ref] || await readFromIndexedDb(ref);
+        if (data) {
+          img.setAttribute("src", data);
+          img.setAttribute("data-v212-loaded", "true");
+          loaded++;
+        }
+      }
+      try {
+        doc.documentElement.setAttribute("data-v212-photo-loaded-count", String(loaded));
+      } catch(e) {}
+      return loaded;
+    } catch(e) { return 0; }
+  }
+  function gateReportWindow(win){
+    try {
+      if (!win || win.__v212ReportPrintPhotoGate) return;
+      win.__v212ReportPrintPhotoGate = true;
+      var nativePrint = win.print;
+      win.print = function(){
+        var self = win;
+        resolveReportPhotos(self).then(function(){
+          return new Promise(function(resolve){ setTimeout(resolve, 300); });
+        }).then(function(){
+          return resolveReportPhotos(self);
+        }).then(function(){
+          nativePrint.call(self);
+        });
+      };
+      setTimeout(function(){ resolveReportPhotos(win); }, 250);
+      setTimeout(function(){ resolveReportPhotos(win); }, 700);
+      setTimeout(function(){ resolveReportPhotos(win); }, 1400);
+      setTimeout(function(){ resolveReportPhotos(win); }, 2500);
+      setTimeout(function(){ resolveReportPhotos(win); }, 4500);
+    } catch(e) {}
+  }
+  function wire(){
+    var nativeOpen = window.open;
+    if (nativeOpen && !nativeOpen.__v212ReportPrintPhotoGate) {
+      window.open = function(){
+        var win = nativeOpen.apply(window, arguments);
+        gateReportWindow(win);
+        return win;
+      };
+      window.open.__v212ReportPrintPhotoGate = true;
+    }
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Report Photo Print Gate 9 Sep v30";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire); else wire();
+  setTimeout(wire, 1900);
+})();
+</script>
 </body>
 </html>
