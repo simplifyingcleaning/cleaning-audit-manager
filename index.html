@@ -30222,5 +30222,205 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
 })();
 </script>
 
+<style id="v204-previous-actions-review-style">
+.v204PreviousActionsPanel{
+  border:1px solid #d7e3f4;
+  background:#f8fafc;
+  border-radius:8px;
+  padding:10px;
+  margin:10px 0;
+}
+.v204PreviousActionsPanel summary{
+  font-weight:900;
+  cursor:pointer;
+  color:#172033;
+}
+.v204PreviousAction{
+  border:1px solid #e2e8f0;
+  background:#fff;
+  border-radius:8px;
+  padding:9px;
+  margin-top:8px;
+}
+.v204PreviousAction b{display:block;color:#172033;margin-bottom:3px}
+.v204PreviousAction span{display:block;color:#475569;font-size:13px;line-height:1.35}
+.v204PreviousAction.met{
+  border-color:#bbf7d0;
+  background:#f0fdf4;
+}
+.v204PreviousAction button{
+  margin-top:7px;
+  min-height:36px;
+  border:1px solid #cbd5e1;
+  background:#fff;
+  color:#172033;
+  border-radius:8px;
+  padding:6px 10px;
+  font-weight:800;
+}
+</style>
+
+<script id="v204-previous-actions-visible-auto-close">
+(function(){
+  /*
+    Previous action review requested 9 Sep 2026.
+    Shows open previous actions during the next audit and marks matching actions Met when the same element is Met.
+  */
+  function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
+  function esc(value){ return text(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function norm(value){ return text(value).toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim(); }
+  function E(id){ return document.getElementById(id); }
+  function stateSafe(){ try { return state || {locations:[],audits:[],actions:[]}; } catch(e) { return {locations:[],audits:[],actions:[]}; } }
+  function rows(){ try { return Array.isArray(draftRows) ? draftRows : []; } catch(e) { return []; } }
+  function currentLocation(){
+    var id = text((E("v162Location") || E("auditLocation") || {}).value);
+    return (stateSafe().locations || []).find(function(loc){ return String(loc.id) === String(id); }) || null;
+  }
+  function activeArea(){
+    var active = document.querySelector("#v196RoomButtons button.active,#v162AuditTools button.active[data-v191-area],#v162AuditTools button.active[data-area-tab]");
+    if (active) return text(active.getAttribute("data-v196-area") || active.getAttribute("data-v191-area") || active.getAttribute("data-area-tab") || active.textContent);
+    var first = rows()[0];
+    return first ? first.area : "";
+  }
+  function currentDate(){ return text((E("v162Date") || E("auditDate") || {}).value) || new Date().toISOString().slice(0,10); }
+  function actionIsClosed(action){
+    return /^(met|closed|complete|completed|resolved)$/i.test(text(action && action.status));
+  }
+  function rowKey(row){ return norm(row && row.area) + "|" + norm(row && row.element); }
+  function rowForAction(action){
+    var list = rows();
+    var actionArea = norm(action && action.area);
+    var actionElement = norm(action && action.element);
+    if (actionElement) {
+      var exact = list.find(function(row){ return norm(row.area) === actionArea && norm(row.element) === actionElement; });
+      if (exact) return exact;
+      var byElement = list.find(function(row){ return norm(row.element) === actionElement; });
+      if (byElement) return byElement;
+    }
+    var actionText = norm((action && action.text) + " " + (action && action.reviewNotes));
+    return list.find(function(row){
+      return norm(row.area) === actionArea && actionText && (actionText.indexOf(norm(row.element).slice(0,28)) >= 0 || norm(row.element).indexOf(actionText.slice(0,28)) >= 0);
+    }) || null;
+  }
+  function previousActions(){
+    var loc = currentLocation();
+    if (!loc) return [];
+    return (stateSafe().actions || []).filter(function(action){
+      if (!action || String(action.locationId) !== String(loc.id)) return false;
+      if (actionIsClosed(action)) return false;
+      return true;
+    }).map(function(action){
+      return { action:action, row:rowForAction(action) };
+    });
+  }
+  function closeMatchingActions(){
+    var loc = currentLocation();
+    var list = rows();
+    if (!loc || !list.length) return 0;
+    var metRows = {};
+    list.forEach(function(row){
+      if (row.status === "Met") metRows[rowKey(row)] = row;
+    });
+    var changed = 0;
+    (stateSafe().actions || []).forEach(function(action){
+      if (!action || String(action.locationId) !== String(loc.id) || actionIsClosed(action)) return;
+      var match = rowForAction(action);
+      if (!match || match.status !== "Met") return;
+      action.status = "Met";
+      action.latestAuditStatus = "Met";
+      action.reviewDate = currentDate();
+      action.reviewNotes = "Closed automatically because this audit marked the matching element as Met.";
+      changed++;
+    });
+    if (changed) {
+      try { if (typeof saveState === "function") saveState(); } catch(e) {}
+      try { if (typeof renderActions === "function") renderActions(); } catch(e) {}
+    }
+    return changed;
+  }
+  function renderPanel(){
+    var wrap = E("auditRows");
+    if (!wrap || !rows().length) return;
+    closeMatchingActions();
+    var current = activeArea();
+    var matches = previousActions().filter(function(item){
+      return !current || !item.row || norm(item.row.area) === norm(current) || norm(item.action.area) === norm(current);
+    });
+    var allCount = previousActions().length;
+    var old = E("v204PreviousActionsPanel");
+    if (!old) {
+      old = document.createElement("details");
+      old.id = "v204PreviousActionsPanel";
+      old.className = "v204PreviousActionsPanel";
+      old.open = false;
+      wrap.parentNode.insertBefore(old, wrap);
+    }
+    old.innerHTML = "<summary>Previous actions " + (allCount ? "(" + allCount + " open)" : "(none open)") + "</summary>" +
+      (matches.length ? matches.map(function(item){
+        var row = item.row;
+        var action = item.action;
+        var matchedMet = row && row.status === "Met";
+        return '<div class="v204PreviousAction ' + (matchedMet ? 'met' : '') + '" data-v204-action="' + esc(action.id || "") + '">' +
+          '<b>' + esc(action.area || (row && row.area) || "Area") + '</b>' +
+          '<span>' + esc(action.element || (row && row.element) || "Previous action") + '</span>' +
+          '<span>' + esc(action.text || "") + '</span>' +
+          '<span>Status now: ' + esc(row ? row.status : "No matching element found") + '</span>' +
+          (matchedMet ? '<span>Will be marked Met on save.</span>' : '<button type="button" data-v204-mark-met="' + esc(action.id || "") + '">Mark action Met</button>') +
+        '</div>';
+      }).join("") : '<div class="v204PreviousAction"><span>No open previous actions for this room. Use the Previous button to check all rooms.</span></div>');
+  }
+  function install(){
+    var oldRender = window.renderAuditRows;
+    if (typeof oldRender === "function" && !oldRender.__v204PreviousActions) {
+      window.renderAuditRows = function(){
+        var result = oldRender.apply(this, arguments);
+        setTimeout(renderPanel, 100);
+        return result;
+      };
+      window.renderAuditRows.__v204PreviousActions = true;
+      try { renderAuditRows = window.renderAuditRows; } catch(e) {}
+    }
+    var oldWorkflowSave = window.v177AuditWorkflow && window.v177AuditWorkflow.saveCurrentAudit;
+    if (window.v177AuditWorkflow && typeof oldWorkflowSave === "function" && !window.v177AuditWorkflow.__v204PreviousActions) {
+      window.v177AuditWorkflow.saveCurrentAudit = async function(){
+        closeMatchingActions();
+        return await oldWorkflowSave.apply(this, arguments);
+      };
+      window.v177AuditWorkflow.__v204PreviousActions = true;
+    }
+    setTimeout(renderPanel, 300);
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Previous Actions 9 Sep v22";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install);
+  else install();
+  document.addEventListener("click", function(event){
+    var target = event.target;
+    if (!target) return;
+    if (target.dataset && target.dataset.v204MarkMet !== undefined) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      var id = target.dataset.v204MarkMet;
+      var action = (stateSafe().actions || []).find(function(item){ return String(item.id) === String(id); });
+      if (action) {
+        action.status = "Met";
+        action.latestAuditStatus = "Met";
+        action.reviewDate = currentDate();
+        action.reviewNotes = "Marked Met while completing the follow-up audit.";
+        try { if (typeof saveState === "function") saveState(); } catch(e) {}
+      }
+      renderPanel();
+      return;
+    }
+    if (target.dataset && (target.dataset.v191Status !== undefined || target.dataset.status !== undefined || target.dataset.v196Area !== undefined || target.dataset.v191Area !== undefined || target.dataset.areaTab !== undefined)) {
+      setTimeout(renderPanel, 150);
+    }
+    if (target.id === "v196DockSave" || target.id === "v193DockSave" || target.id === "v191SaveAudit" || target.id === "v177SaveAudit" || target.id === "saveAudit") {
+      closeMatchingActions();
+    }
+  }, true);
+})();
+</script>
+
 </body>
 </html>
