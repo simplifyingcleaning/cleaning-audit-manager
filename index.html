@@ -31573,5 +31573,227 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   setTimeout(wire, 1900);
 })();
 </script>
+<script id="v213-open-report-with-real-photo-data">
+(function(){
+  var PHOTO_PREFIX = "idbphoto:";
+  var DB_NAMES = ["simplifying_cleaning_photo_store_v145", "simplifying_cleaning_photo_store_v1", "simplifying_cleaning_photo_store_v162"];
+  var ARCHIVE_KEYS = ["simplifying_cleaning_photo_archive_v213", "simplifying_cleaning_photo_archive_v209", "simplifying_cleaning_photo_archive_v208"];
+  var SUPABASE_URL = "https://nllvgkrflfqtnfbahvwb.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sbHZna3JmbGZxdG5mYmFodndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNDUwMDQsImV4cCI6MjEwMjYyMTAwNH0.mMXpE0viRy6Eomii9upP6_2BplokYmTX9zpwo7on4p0";
+  var BACKUP_NAMES = ["live_audit_system_state_v2_single", "live_audit_system_state"];
+  var sbClient = null;
+  function clean(value){ return String(value || "").trim(); }
+  function setStatus(message){ var el = document.getElementById("backupOnlineStatus"); if (el) el.textContent = message; }
+  function saveArchive(archive){
+    if (!archive || typeof archive !== "object") return;
+    var raw = JSON.stringify(archive);
+    ARCHIVE_KEYS.forEach(function(key){ try { localStorage.setItem(key, raw); } catch(e) {} });
+  }
+  function getArchive(){
+    for (var i = 0; i < ARCHIVE_KEYS.length; i++) {
+      try {
+        var raw = localStorage.getItem(ARCHIVE_KEYS[i]);
+        if (raw) return JSON.parse(raw) || {};
+      } catch(e) {}
+    }
+    return {};
+  }
+  function loadSupabaseScript(){
+    return new Promise(function(resolve, reject){
+      if (window.supabase && window.supabase.createClient) return resolve();
+      var existing = document.querySelector('script[src*="supabase-js"],script[data-v187-supabase],script[data-v199-supabase]');
+      if (existing) {
+        existing.addEventListener("load", function(){ resolve(); });
+        existing.addEventListener("error", function(){ reject(new Error("Could not load Supabase.")); });
+        setTimeout(function(){ if (window.supabase && window.supabase.createClient) resolve(); }, 300);
+        return;
+      }
+      var script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+      script.async = true;
+      script.onload = function(){ resolve(); };
+      script.onerror = function(){ reject(new Error("Could not load Supabase.")); };
+      document.head.appendChild(script);
+    });
+  }
+  async function supabaseClient(){
+    if (sbClient) return sbClient;
+    await loadSupabaseScript();
+    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}});
+    return sbClient;
+  }
+  async function fetchLatestArchive(){
+    try {
+      var sb = await supabaseClient();
+      var meta = await sb.from("audit_backups").select("id,backup_name,created_at").in("backup_name", BACKUP_NAMES).order("created_at", {ascending:false}).limit(1);
+      if (meta.error || !meta.data || !meta.data.length) return {};
+      var row = await sb.from("audit_backups").select("backup_data").eq("id", meta.data[0].id).single();
+      var backup = row && row.data ? row.data.backup_data : null;
+      var archive = backup && backup.photoArchive && typeof backup.photoArchive === "object" ? backup.photoArchive : {};
+      if (Object.keys(archive).length) saveArchive(archive);
+      return archive;
+    } catch(e) { return {}; }
+  }
+  function openDb(name){
+    return new Promise(function(resolve){
+      if (!window.indexedDB) return resolve(null);
+      var req = indexedDB.open(name, 1);
+      req.onsuccess = function(){
+        var db = req.result;
+        if (!db.objectStoreNames.contains("photos")) { db.close(); resolve(null); return; }
+        resolve(db);
+      };
+      req.onerror = function(){ resolve(null); };
+    });
+  }
+  async function readFromIndexedDb(ref){
+    var id = clean(ref).replace(PHOTO_PREFIX, "");
+    if (!id) return "";
+    for (var i = 0; i < DB_NAMES.length; i++) {
+      var db = await openDb(DB_NAMES[i]);
+      if (!db) continue;
+      var data = await new Promise(function(resolve){
+        try {
+          var tx = db.transaction("photos", "readonly");
+          var req = tx.objectStore("photos").get(id);
+          req.onsuccess = function(){ db.close(); resolve(req.result && req.result.dataUrl || ""); };
+          req.onerror = function(){ db.close(); resolve(""); };
+        } catch(e) { try { db.close(); } catch(closeError) {} resolve(""); }
+      });
+      if (data) return data;
+    }
+    return "";
+  }
+  async function resolvePhoto(ref, archive){
+    ref = clean(ref);
+    if (!ref) return "";
+    if (/^data:image\//i.test(ref)) return ref;
+    if (ref.indexOf(PHOTO_PREFIX) !== 0) return ref;
+    return archive[ref] || await readFromIndexedDb(ref) || "";
+  }
+  async function buildCurrentArchive(){
+    var out = getArchive();
+    try {
+      var audits = (typeof state !== "undefined" && state && Array.isArray(state.audits)) ? state.audits : [];
+      for (var a = 0; a < audits.length; a++) {
+        var audit = audits[a];
+        for (var i = 0; i < ((audit && audit.items) || []).length; i++) {
+          var row = audit.items[i];
+          for (var p = 0; p < ((row && row.photos) || []).length; p++) {
+            var ref = clean(row.photos[p]);
+            if (/^data:image\//i.test(ref)) out["inline:" + a + ":" + i + ":" + p] = ref;
+            else if (ref.indexOf(PHOTO_PREFIX) === 0 && !out[ref]) {
+              var data = await readFromIndexedDb(ref);
+              if (data) out[ref] = data;
+            }
+          }
+        }
+      }
+    } catch(e) {}
+    saveArchive(out);
+    return out;
+  }
+  function wrapOnline(){
+    if (!window.v187OnlineDatabase || window.v187OnlineDatabase.__v213ArchivePersist) return;
+    var oldSave = window.v187OnlineDatabase.save;
+    var oldLoad = window.v187OnlineDatabase.load;
+    if (typeof oldSave === "function") {
+      window.v187OnlineDatabase.save = async function(){
+        var result = await oldSave.apply(this, arguments);
+        var archive = await buildCurrentArchive();
+        setStatus("Saved online. Report photo archive ready: " + Object.keys(archive).length + " photo(s).");
+        return result;
+      };
+    }
+    if (typeof oldLoad === "function") {
+      window.v187OnlineDatabase.load = async function(){
+        var result = await oldLoad.apply(this, arguments);
+        var archive = await fetchLatestArchive();
+        if (!Object.keys(archive).length) archive = getArchive();
+        setStatus("Loaded online. Report photo archive ready: " + Object.keys(archive).length + " photo(s).");
+        return result;
+      };
+    }
+    window.v187OnlineDatabase.__v213ArchivePersist = true;
+  }
+  function writeLoading(win){
+    try {
+      win.document.open();
+      win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Preparing report</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#172033} .box{border:1px solid #dbe3ef;border-radius:10px;padding:18px;max-width:520px}</style></head><body><div class="box"><h2>Preparing report photos...</h2><p>Please wait while the report photos are loaded.</p></div></body></html>');
+      win.document.close();
+    } catch(e) {}
+  }
+  function wrapReport(){
+    if (!window.openAuditReport || window.openAuditReport.__v213RealPhotoData) return;
+    var previous = window.openAuditReport;
+    window.openAuditReport = function(id){
+      var reportWin = window.open("", "_blank");
+      if (!reportWin) return alert("Report popup was blocked. Please allow popups for this site.");
+      writeLoading(reportWin);
+      (async function(){
+        var audit = null;
+        var originals = [];
+        var resolvedCount = 0;
+        try {
+          audit = typeof state !== "undefined" && state && Array.isArray(state.audits) ? state.audits.find(function(a){ return a.id === id; }) : null;
+          if (!audit) throw new Error("Audit not found.");
+          var archive = getArchive();
+          var latest = await fetchLatestArchive();
+          Object.keys(latest).forEach(function(key){ archive[key] = latest[key]; });
+          saveArchive(archive);
+          for (var i = 0; i < ((audit && audit.items) || []).length; i++) {
+            var row = audit.items[i];
+            if (!Array.isArray(row.photos) || !row.photos.length) continue;
+            originals.push({row:row, photos:row.photos.slice()});
+            var next = [];
+            for (var p = 0; p < row.photos.length; p++) {
+              var resolved = await resolvePhoto(row.photos[p], archive);
+              if (resolved) {
+                if (/^data:image\//i.test(resolved)) resolvedCount++;
+                next.push(resolved);
+              } else {
+                next.push(row.photos[p]);
+              }
+            }
+            row.photos = next;
+          }
+          var nativeOpen = window.open;
+          window.open = function(){ return reportWin; };
+          try { previous.call(window, id); }
+          finally { window.open = nativeOpen; }
+          if (!resolvedCount) {
+            try {
+              var note = reportWin.document.createElement("div");
+              note.style.cssText = "position:fixed;left:16px;right:16px;bottom:16px;z-index:99999;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;padding:10px;font:13px Arial";
+              note.textContent = "No report photos were matched. The online backup may contain the audit records but not matching photo image data for this report.";
+              reportWin.document.body.appendChild(note);
+            } catch(noteError) {}
+          }
+        } catch(error) {
+          try {
+            reportWin.document.open();
+            reportWin.document.write('<!doctype html><html><body style="font-family:Arial,sans-serif;padding:24px"><h2>Report could not open</h2><p>' + String(error && error.message ? error.message : error).replace(/[<>&]/g,function(c){return {"<":"&lt;",">":"&gt;","&":"&amp;"}[c];}) + '</p></body></html>');
+            reportWin.document.close();
+          } catch(e) {}
+        } finally {
+          originals.forEach(function(item){ item.row.photos = item.photos; });
+        }
+      })();
+      return false;
+    };
+    window.openAuditReport.__v213RealPhotoData = true;
+    try { openAuditReport = window.openAuditReport; } catch(e) {}
+  }
+  function wire(){
+    wrapOnline();
+    wrapReport();
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Real Report Photos 10 Sep v31";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire); else wire();
+  setTimeout(wire, 600);
+  setTimeout(wire, 1800);
+})();
+</script>
 </body>
 </html>
