@@ -32030,5 +32030,203 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install); else install();
 })();
 </script>
+<style id="v216-element-name-visible-style">
+.v177Element,
+.v191Element,
+.v162AuditCard .v177Element,
+.v191AuditCard .v191Element{
+  display:block!important;
+  visibility:visible!important;
+  color:#101828!important;
+  font-weight:800!important;
+  font-size:15px!important;
+  line-height:1.35!important;
+  margin-top:4px!important;
+}
+.v162AuditCard[data-v216-missing-element] .v177Element::after,
+.v191AuditCard[data-v216-missing-element] .v191Element::after{
+  content:"Element name missing - reload audit";
+  color:#b42318;
+}
+</style>
+<script id="v216-healthcare-elements-and-edit-display-fix">
+(function(){
+  var LIMITED_ELEMENTS = [
+    "Floors hoovered/vacuumed and mopped to the agreed cleaning standard, including accessible edges and visible debris removal",
+    "Domestic bins emptied, liners replaced where required, and bin exterior left clean and not overflowing"
+  ];
+  function E(id){ return document.getElementById(id); }
+  function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
+  function norm(value){ return text(value).toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim(); }
+  function isHealthcareType(type){ return /^(dental|healthcare|health care)$/i.test(text(type)); }
+  function isLimitedClinicalArea(area){ return /surgery|surgeries|x ray|xray|x-ray|decon|decontamination|clinical|treatment/.test(norm(area)); }
+  function isFloorElement(element){ var v = norm(element); return /floor|hoover|vacuum|mop/.test(v) && !/handrail|banister/.test(v); }
+  function isWasteElement(element){ var v = norm(element); return /domestic waste|waste|bin|bins|liner|receptacle|rubbish|refuse/.test(v); }
+  function elementGroup(element){
+    var v = norm(element);
+    if (isFloorElement(v)) return "floor";
+    if (isWasteElement(v)) return "waste";
+    if (/glazing|glass|vision panel|window|screen|mirror/.test(v)) return "glass";
+    if (/wall|ledge|skirting|corner|low level|edge/.test(v) && !/floor|stair/.test(v)) return "walls-edges";
+    if (/radiator|pipework|heater|fitting/.test(v)) return "radiator-pipework";
+    if (/door|handle|switch|push|touch|keypad|flush|lock/.test(v)) return "touchpoints";
+    if (/chair|seat|table|desk|counter|worktop|surface|furniture/.test(v)) return "surfaces-furniture";
+    if (/toilet|pan|seat|sanitary/.test(v)) return "toilet";
+    if (/sink|tap|basin|splashback/.test(v)) return "sink";
+    if (/high|cobweb|vent|ceiling/.test(v)) return "high-level";
+    if (/fire extinguisher|fire point|safety signage|wall mounted safety/.test(v)) return "fire-safety";
+    if (/computer|keyboard|mouse|telephone|printer|equipment|appliance/.test(v)) return "equipment";
+    if (/dispenser|soap|towel|toilet roll|hand hygiene/.test(v)) return "dispensers";
+    return v;
+  }
+  function mergeRow(base, incoming){
+    if (!incoming) return base;
+    base.status = worstStatus(base.status, incoming.status);
+    ["observation","actionText","owner","targetDate"].forEach(function(key){ if (!text(base[key]) && text(incoming[key])) base[key] = incoming[key]; });
+    base.photos = unique((Array.isArray(base.photos) ? base.photos : []).concat(Array.isArray(incoming.photos) ? incoming.photos : []));
+    return base;
+  }
+  function unique(list){ var out=[]; (list||[]).forEach(function(item){ if (item && out.indexOf(item)<0) out.push(item); }); return out; }
+  function worstStatus(a,b){
+    var rank = {"Not met":4,"Partially met":3,"Met":2,"N/A":1};
+    return (rank[b] || 0) > (rank[a] || 0) ? b : (a || b || "Met");
+  }
+  function makeRow(area, fr, element, matches){
+    var base = {id:"row_" + Math.random().toString(36).slice(2) + Date.now(), area:area, fr:fr || "", element:element, status:"Met", observation:"Standard met at the time of audit.", actionText:"", owner:"", targetDate:"", photos:[]};
+    (matches || []).forEach(function(row){ mergeRow(base, row); });
+    base.area = area;
+    base.fr = fr || base.fr || "";
+    base.element = element;
+    return base;
+  }
+  function normaliseAreaRows(area, rows){
+    var fr = rows.map(function(row){ return text(row && row.fr); }).filter(Boolean)[0] || "";
+    if (isLimitedClinicalArea(area)) {
+      var floorMatches = rows.filter(function(row){ return isFloorElement(row && row.element); });
+      var wasteMatches = rows.filter(function(row){ return isWasteElement(row && row.element); });
+      var all = rows.filter(Boolean);
+      return [
+        makeRow(area, fr || "FR2", LIMITED_ELEMENTS[0], floorMatches.length ? floorMatches : all.filter(function(row){ return !isWasteElement(row.element); })),
+        makeRow(area, fr || "FR2", LIMITED_ELEMENTS[1], wasteMatches)
+      ];
+    }
+    var seen = {};
+    var out = [];
+    rows.forEach(function(row){
+      if (!row) return;
+      if (!text(row.element)) row.element = "Cleaning element";
+      var key = elementGroup(row.element);
+      if (seen[key] !== undefined) mergeRow(out[seen[key]], row);
+      else { seen[key] = out.length; out.push(row); }
+    });
+    return out;
+  }
+  function normaliseRows(list, type){
+    list = Array.isArray(list) ? list : [];
+    if (!isHealthcareType(type)) return list;
+    var areas = [];
+    list.forEach(function(row){ if (row && text(row.area) && !areas.some(function(area){ return norm(area) === norm(row.area); })) areas.push(row.area); });
+    var out = [];
+    areas.forEach(function(area){ out = out.concat(normaliseAreaRows(area, list.filter(function(row){ return norm(row && row.area) === norm(area); }))); });
+    return out;
+  }
+  function stateSafe(){ try { return state || {locations:[], audits:[], actions:[]}; } catch(e) { return {locations:[], audits:[], actions:[]}; } }
+  function currentLocation(){
+    var s = stateSafe();
+    var id = text((E("v162Location") || E("auditLocation") || {}).value);
+    return (s.locations || []).find(function(loc){ return String(loc.id) === String(id); }) || null;
+  }
+  function rowsRef(){
+    try { if (typeof rows === "function") return rows(); } catch(e) {}
+    try { if (typeof window.rows === "function") return window.rows(); } catch(e) {}
+    return null;
+  }
+  function replaceActiveRows(next){
+    try { if (typeof setRows === "function") { setRows(next); return true; } } catch(e) {}
+    var ref = rowsRef();
+    if (Array.isArray(ref)) { ref.splice.apply(ref, [0, ref.length].concat(next)); return true; }
+    return false;
+  }
+  function renderAudit(){
+    try { if (typeof renderAuditRowsStable === "function") { renderAuditRowsStable(); return; } } catch(e) {}
+    try { if (typeof renderAuditRows === "function") renderAuditRows(); } catch(e) {}
+  }
+  function normaliseActiveAudit(){
+    var loc = currentLocation();
+    if (!loc || !isHealthcareType(loc.type || loc.locationType)) return false;
+    var ref = rowsRef();
+    if (!Array.isArray(ref) || !ref.length) return false;
+    var before = JSON.stringify(ref.map(function(row){ return [row.area,row.element,row.status]; }));
+    var next = normaliseRows(ref, loc.type || loc.locationType);
+    var after = JSON.stringify(next.map(function(row){ return [row.area,row.element,row.status]; }));
+    if (before !== after) { replaceActiveRows(next); return true; }
+    return false;
+  }
+  function persist(){
+    try { if (typeof saveState === "function") saveState(); } catch(e) {}
+    try { localStorage.setItem("simplifying_cleaning_v11_stable", JSON.stringify(stateSafe())); } catch(e) {}
+    try { localStorage.setItem("simplifying_cleaning_audit_manager_v11", JSON.stringify(stateSafe())); } catch(e) {}
+  }
+  function normaliseSavedAudits(){
+    var s = stateSafe();
+    var changed = false;
+    (s.audits || []).forEach(function(audit){
+      if (!audit || !isHealthcareType(audit.locationType) || !Array.isArray(audit.items)) return;
+      var before = JSON.stringify(audit.items.map(function(row){ return [row.area,row.element,row.status]; }));
+      audit.items = normaliseRows(audit.items, audit.locationType);
+      var after = JSON.stringify(audit.items.map(function(row){ return [row.area,row.element,row.status]; }));
+      if (before !== after) { audit.v216HealthcareElementsFixed = true; changed = true; }
+    });
+    if (changed) persist();
+  }
+  function overrideTemplates(){
+    var oldTemplate = window.templateFor;
+    window.templateFor = function(type, roomName){
+      if (isHealthcareType(type) && isLimitedClinicalArea(roomName)) return LIMITED_ELEMENTS.slice();
+      var list = typeof oldTemplate === "function" ? oldTemplate.apply(this, arguments) : [];
+      return Array.isArray(list) ? normaliseRows(list.map(function(element){ return {area:roomName, element:element, status:"Met", photos:[]}; }), type).map(function(row){ return row.element; }) : [];
+    };
+    try { templateFor = window.templateFor; } catch(e) {}
+    if (window.v200HealthcareElements) window.v200HealthcareElements.clinical = LIMITED_ELEMENTS.slice();
+    if (window.v203HealthcareElements) window.v203HealthcareElements.clinical = LIMITED_ELEMENTS.slice();
+  }
+  function fixVisibleElementNames(){
+    Array.prototype.slice.call(document.querySelectorAll("[data-row-id]")).forEach(function(card){
+      var row = null;
+      try { row = typeof rowById === "function" ? rowById(card.getAttribute("data-row-id")) : null; } catch(e) {}
+      if (!row) {
+        var ref = rowsRef() || [];
+        row = ref.find(function(item){ return String(item && item.id) === String(card.getAttribute("data-row-id")); });
+      }
+      var label = card.querySelector(".v177Element,.v191Element");
+      if (label && row && text(row.element) && !text(label.textContent)) label.textContent = row.element;
+      if (!label && row && text(row.element)) {
+        var area = card.querySelector(".v177Area,.v191Area");
+        var div = document.createElement("div");
+        div.className = area && area.className && area.className.indexOf("v191") >= 0 ? "v191Element" : "v177Element";
+        div.textContent = row.element;
+        if (area && area.parentNode) area.parentNode.insertBefore(div, area.nextSibling);
+      }
+      if (row && !text(row.element)) card.setAttribute("data-v216-missing-element", "true");
+    });
+  }
+  function refreshSoon(){ setTimeout(function(){ if (normaliseActiveAudit()) renderAudit(); fixVisibleElementNames(); }, 80); }
+  function install(){
+    overrideTemplates();
+    normaliseSavedAudits();
+    refreshSoon();
+    document.addEventListener("click", function(event){
+      var target = event.target;
+      if (!target) return;
+      if (target.id === "v162LoadAudit" || target.id === "loadAudit" || target.id === "v191AddRoomBtn" || target.id === "v162AddRoom" || target.id === "v177SaveAudit" || target.id === "v191SaveAudit" || (target.dataset && (target.dataset.editAuditV38 || target.dataset.editAuditV37 || target.dataset.editAuditV36 || target.dataset.editV39))) refreshSoon();
+    }, true);
+    setTimeout(refreshSoon, 800);
+    setTimeout(refreshSoon, 1800);
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Healthcare Elements Fixed 17 Sep v34";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install); else install();
+})();
+</script>
 </body>
 </html>
