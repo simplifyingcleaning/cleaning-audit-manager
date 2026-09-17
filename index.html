@@ -32280,5 +32280,94 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install); else install();
 })();
 </script>
+<style id="v218-remove-room-style">
+#v218RemoveRoomBtn,
+.v218RemoveRoomBtn{
+  background:#fee2e2!important;
+  color:#991b1b!important;
+  border:1px solid #fecaca!important;
+  margin-top:8px!important;
+}
+</style>
+<script id="v218-remove-room-during-edit">
+(function(){
+  function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
+  function norm(value){ return text(value).toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim(); }
+  function rowsRef(){
+    try { if (typeof rows === "function") return rows(); } catch(e) {}
+    try { if (typeof window.rows === "function") return window.rows(); } catch(e) {}
+    return null;
+  }
+  function activeAreaName(){
+    var active = document.querySelector('.v162AreaTabs button.active');
+    if (active) return text(active.getAttribute('data-v191-area') || active.getAttribute('data-area-tab') || active.textContent);
+    var rename = document.getElementById('v191RenameArea') || document.getElementById('v162RenameArea');
+    if (rename) return text(rename.value);
+    var card = document.querySelector('[data-row-id]');
+    if (card) {
+      var row = findRow(card.getAttribute('data-row-id'));
+      if (row) return text(row.area);
+    }
+    return '';
+  }
+  function findRow(id){
+    var ref = rowsRef() || [];
+    return ref.find(function(row){ return String(row && row.id) === String(id); }) || null;
+  }
+  function setRowsSafe(next){
+    try { if (typeof setRows === 'function') { setRows(next); return true; } } catch(e) {}
+    var ref = rowsRef();
+    if (Array.isArray(ref)) { ref.splice.apply(ref, [0, ref.length].concat(next)); return true; }
+    return false;
+  }
+  function render(){
+    try { if (typeof renderAuditRowsStable === 'function') { renderAuditRowsStable(); return; } } catch(e) {}
+    try { if (typeof renderAuditRows === 'function') { renderAuditRows(); return; } } catch(e) {}
+  }
+  function addButtons(){
+    var panels = Array.prototype.slice.call(document.querySelectorAll('.v162RoomTools .v162ToolGrid'));
+    panels.forEach(function(panel){
+      if (panel.querySelector('#v218RemoveRoomBtn,.v218RemoveRoomBtn')) return;
+      var wrap = document.createElement('div');
+      wrap.innerHTML = '<label>Remove current room</label><button type="button" id="v218RemoveRoomBtn" class="v191PhotoButton v162PhotoButton v218RemoveRoomBtn">Remove room</button>';
+      panel.appendChild(wrap);
+    });
+  }
+  function removeCurrentRoom(){
+    var area = activeAreaName();
+    if (!area) return alert('Select the room you want to remove first.');
+    var ref = rowsRef();
+    if (!Array.isArray(ref) || !ref.length) return alert('No audit rows are loaded.');
+    var matching = ref.filter(function(row){ return norm(row && row.area) === norm(area); });
+    if (!matching.length) return alert('Could not find rows for this room.');
+    if (!confirm('Remove room "' + area + '" from this audit? This will remove all checklist lines for that room.')) return;
+    var next = ref.filter(function(row){ return norm(row && row.area) !== norm(area); });
+    setRowsSafe(next);
+    render();
+    setTimeout(addButtons, 100);
+  }
+  function install(){
+    addButtons();
+    document.addEventListener('click', function(event){
+      var target = event.target;
+      if (!target) return;
+      if (target.id === 'v218RemoveRoomBtn' || (target.classList && target.classList.contains('v218RemoveRoomBtn'))) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        removeCurrentRoom();
+        return;
+      }
+      if ((target.dataset && (target.dataset.v191Area !== undefined || target.dataset.areaTab !== undefined || target.dataset.v197RoomTools !== undefined)) || target.id === 'v191AddRoomBtn' || target.id === 'v162AddRoom' || target.id === 'v191RenameAreaBtn' || target.id === 'v162RenameAreaBtn' || target.id === 'v162LoadAudit' || target.id === 'loadAudit') {
+        setTimeout(addButtons, 120);
+      }
+    }, true);
+    setTimeout(addButtons, 600);
+    setTimeout(addButtons, 1600);
+    var title = document.querySelector('header h1');
+    if (title) title.textContent = 'Audit Manager - Remove Rooms 17 Sep v36';
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
+})();
+</script>
 </body>
 </html>
