@@ -31795,5 +31795,168 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   setTimeout(wire, 1800);
 })();
 </script>
+<script id="v214-audit-save-storage-recovery">
+(function(){
+  var MAIN_KEYS = ["simplifying_cleaning_v11_stable", "simplifying_cleaning_audit_manager_v11"];
+  var ARCHIVE_KEYS = ["simplifying_cleaning_photo_archive_v213", "simplifying_cleaning_photo_archive_v209", "simplifying_cleaning_photo_archive_v208"];
+  var saving = false;
+  function E(id){ return document.getElementById(id); }
+  function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
+  function uid(prefix){ return (prefix || "id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8); }
+  function clone(value){ try { return JSON.parse(JSON.stringify(value)); } catch(e) { return value; } }
+  function today(){ return new Date().toISOString().slice(0, 10); }
+  function stateSafe(){
+    try {
+      state = state && typeof state === "object" ? state : {};
+      state.locations = Array.isArray(state.locations) ? state.locations : [];
+      state.audits = Array.isArray(state.audits) ? state.audits : [];
+      state.actions = Array.isArray(state.actions) ? state.actions : [];
+      return state;
+    } catch(e) { return {locations:[], audits:[], actions:[]}; }
+  }
+  function clearReportPhotoCache(){
+    ARCHIVE_KEYS.forEach(function(key){ try { localStorage.removeItem(key); } catch(e) {} });
+  }
+  function persistState(s){
+    clearReportPhotoCache();
+    var raw = JSON.stringify(s || stateSafe());
+    var lastError = null;
+    for (var i = 0; i < MAIN_KEYS.length; i++) {
+      try { localStorage.setItem(MAIN_KEYS[i], raw); }
+      catch(error) { lastError = error; clearReportPhotoCache(); try { localStorage.setItem(MAIN_KEYS[i], raw); lastError = null; } catch(retryError) { lastError = retryError; } }
+    }
+    try { if (typeof KEY !== "undefined" && KEY) localStorage.setItem(KEY, raw); } catch(error) { lastError = lastError || error; }
+    if (lastError) throw lastError;
+  }
+  function currentLocation(){
+    var s = stateSafe();
+    try { if (typeof window.currentLocation === "function") { var loc = window.currentLocation(); if (loc) return loc; } } catch(e) {}
+    var id = text((E("auditLocation") || E("v162Location") || {}).value);
+    return (s.locations || []).find(function(loc){ return String(loc.id) === String(id); }) || null;
+  }
+  function currentRows(){
+    try { if (typeof window.rows === "function") return clone(window.rows()) || []; } catch(e) {}
+    try { if (typeof rows === "function") return clone(rows()) || []; } catch(e) {}
+    try { if (Array.isArray(window.auditRows)) return clone(window.auditRows); } catch(e) {}
+    return [];
+  }
+  function currentActions(){
+    try { if (typeof window.actions === "function") return clone(window.actions()) || []; } catch(e) {}
+    try { if (typeof actions === "function") return clone(actions()) || []; } catch(e) {}
+    return [];
+  }
+  function scoreRows(list, type){
+    try { if (typeof weightedScore === "function") return weightedScore(list, type); } catch(e) {}
+    try { if (typeof weighted === "function") return weighted(list, type); } catch(e) {}
+    var total = 0, got = 0;
+    (list || []).forEach(function(row){
+      if (!row || row.status === "N/A") return;
+      total += 2;
+      if (row.status === "Met") got += 2;
+      else if (row.status === "Partially met") got += 1;
+    });
+    return total ? Math.round((got / total) * 100) : null;
+  }
+  function outcomeFor(score){
+    try { if (typeof outcome === "function") return outcome(score); } catch(e) {}
+    try { if (typeof areaOutcome === "function") return areaOutcome(score); } catch(e) {}
+    if (score === null || score === undefined) return "N/A";
+    return score >= 90 ? "Met" : score >= 75 ? "Partially met" : "Not met";
+  }
+  function bandFor(type, score){
+    try { if (typeof rating === "function") return rating(type, score); } catch(e) {}
+    return outcomeFor(score);
+  }
+  function auditDate(){ return text((E("v162Date") || E("auditDate") || {}).value) || today(); }
+  function auditor(){ return text((E("v162Auditor") || E("auditAuditor") || E("auditor") || {}).value); }
+  function summaryFor(loc, score){
+    var box = E("v162Summary") || E("auditSummary");
+    return text(box && box.value) || "Audit completed for " + (loc.name || loc.siteName || "this location") + ". This audit is based on a representative sample of rooms and cleaning elements checked at the time of audit. Overall score " + (score === null || score === undefined ? "N/A" : score + "%") + ".";
+  }
+  function editingId(){
+    try { if (typeof editingAuditId !== "undefined" && editingAuditId) return String(editingAuditId); } catch(e) {}
+    try { if (window.v177AuditWorkflow && window.v177AuditWorkflow.editingAuditId) return String(window.v177AuditWorkflow.editingAuditId); } catch(e) {}
+    return "";
+  }
+  function actionRows(audit, list){
+    var out = [];
+    (list || []).forEach(function(row){
+      if (!row || row.status === "Met" || row.status === "N/A" || !text(row.actionText)) return;
+      out.push({id:uid("act"), sourceAuditId:audit.id, locationId:audit.locationId, locationName:audit.locationName, area:row.area || "", element:row.element || "", text:text(row.actionText), owner:text(row.owner), targetDate:text(row.targetDate), status:"Open", raisedDate:audit.date, reviewDate:"", reviewNotes:""});
+    });
+    currentActions().forEach(function(action){
+      if (!action || !text(action.text)) return;
+      out.push(Object.assign({}, action, {id:action.id || uid("act"), sourceAuditId:audit.id, locationId:audit.locationId, locationName:audit.locationName, raisedDate:action.raisedDate || audit.date}));
+    });
+    return out;
+  }
+  function refresh(){
+    try { if (typeof renderHistory === "function") renderHistory(); } catch(e) {}
+    try { if (typeof renderDashboard === "function") renderDashboard(); } catch(e) {}
+    try { if (typeof renderActions === "function") renderActions(); } catch(e) {}
+    try { if (typeof renderAll === "function") renderAll(); } catch(e) {}
+  }
+  function saveDirect(){
+    var loc = currentLocation();
+    if (!loc) { alert("Select and load a location before saving."); return; }
+    var list = currentRows();
+    if (!list.length) { alert("Load an audit before saving."); return; }
+    var s = stateSafe();
+    var score = scoreRows(list, loc.type || loc.locationType || "commercial");
+    var id = editingId() || uid("audit");
+    var audit = {
+      id:id,
+      locationId:loc.id,
+      locationName:loc.name || loc.siteName || "Location",
+      locationType:loc.type || loc.locationType || "commercial",
+      date:auditDate(),
+      auditor:auditor(),
+      score:score,
+      outcome:outcomeFor(score),
+      band:bandFor(loc.type || loc.locationType || "commercial", score),
+      summary:summaryFor(loc, score),
+      items:clone(list),
+      hs:[],
+      auditActions:currentActions(),
+      createdAt:new Date().toISOString(),
+      v214SaveRecovery:true
+    };
+    var beforeCount = s.audits.length;
+    var idx = s.audits.findIndex(function(item){ return String(item.id) === String(id); });
+    if (idx >= 0) s.audits[idx] = audit;
+    else s.audits.unshift(audit);
+    s.actions = (s.actions || []).filter(function(action){ return String(action.sourceAuditId) !== String(id); }).concat(actionRows(audit, list));
+    persistState(s);
+    var after = stateSafe();
+    var exists = (after.audits || []).some(function(item){ return String(item.id) === String(id); });
+    if (!exists) throw new Error("The audit could not be verified in saved history.");
+    try { if (typeof editingAuditId !== "undefined") editingAuditId = ""; } catch(e) {}
+    refresh();
+    alert(idx >= 0 ? "Audit updated and saved." : "Audit saved. History now has " + (after.audits || []).length + " audit(s). It had " + beforeCount + " before this save.");
+  }
+  function handleSave(event){
+    var target = event && event.target;
+    while (target && target !== document) {
+      if (target.id === "saveAudit" || target.id === "v177SaveAudit" || target.id === "v191SaveAudit" || target.id === "v193DockSave" || target.id === "v196DockSave" || target.id === "v80SaveAudit") break;
+      target = target.parentNode;
+    }
+    if (!target || target === document) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (saving) return;
+    saving = true;
+    Promise.resolve().then(saveDirect).catch(function(error){ alert("Save failed: " + (error && error.message ? error.message : error)); }).finally(function(){ saving = false; });
+  }
+  function install(){
+    clearReportPhotoCache();
+    document.addEventListener("click", handleSave, true);
+    window.saveAudit = function(){ return saveDirect(); };
+    try { saveAudit = window.saveAudit; } catch(e) {}
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Save Restored 17 Sep v32";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install); else install();
+})();
+</script>
 </body>
 </html>
