@@ -32228,5 +32228,57 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install); else install();
 })();
 </script>
+<style id="v217-home-button-style">
+#v217HomeButton{
+  position:fixed;
+  right:14px;
+  bottom:14px;
+  z-index:9998;
+  border:0;
+  border-radius:999px;
+  background:#241152;
+  color:#fff;
+  box-shadow:0 10px 28px rgba(36,17,82,.28);
+  min-height:50px;
+  padding:0 18px;
+  font-weight:900;
+  font-size:15px;
+  cursor:pointer;
+}
+#v217HomeButton:active{transform:translateY(1px)}
+@media (max-width:720px){
+  #v217HomeButton{left:auto;right:12px;bottom:12px;min-height:54px;padding:0 18px;font-size:16px}
+  body{padding-bottom:72px}
+}
+@media print{#v217HomeButton{display:none!important}}
+</style>
+<script id="v217-home-button">
+(function(){
+  function showDashboard(){
+    try {
+      document.querySelectorAll(".panel").forEach(function(panel){ panel.classList.toggle("active", panel.id === "dashboard"); });
+      document.querySelectorAll(".tabBtn[data-tab]").forEach(function(button){ button.classList.toggle("active", button.getAttribute("data-tab") === "dashboard"); });
+      if (typeof renderDashboard === "function") renderDashboard();
+      window.scrollTo({top:0, behavior:"smooth"});
+    } catch(e) {
+      var tab = document.querySelector('.tabBtn[data-tab="dashboard"]');
+      if (tab) tab.click();
+    }
+  }
+  function install(){
+    if (document.getElementById("v217HomeButton")) return;
+    var button = document.createElement("button");
+    button.id = "v217HomeButton";
+    button.type = "button";
+    button.textContent = "Home";
+    button.setAttribute("aria-label", "Go to dashboard home");
+    button.addEventListener("click", function(event){ event.preventDefault(); showDashboard(); }, true);
+    document.body.appendChild(button);
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Home Button 17 Sep v35";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install); else install();
+})();
+</script>
 </body>
 </html>
