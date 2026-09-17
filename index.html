@@ -31958,5 +31958,77 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install); else install();
 })();
 </script>
+<script id="v215-status-buttons-touch-fix">
+(function(){
+  var VALID = {"Met":true, "Partially met":true, "Not met":true, "N/A":true};
+  function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
+  function rowsSafe(){
+    try { if (typeof window.rows === "function") return window.rows() || []; } catch(e) {}
+    try { if (typeof rows === "function") return rows() || []; } catch(e) {}
+    try { if (Array.isArray(window.auditRows)) return window.auditRows; } catch(e) {}
+    return [];
+  }
+  function rowByIdSafe(id){
+    id = String(id || "");
+    try { if (typeof window.rowById === "function") { var r = window.rowById(id); if (r) return r; } } catch(e) {}
+    try { if (typeof rowById === "function") { var rr = rowById(id); if (rr) return rr; } } catch(e) {}
+    return rowsSafe().find(function(row){ return String(row && row.id) === id; }) || null;
+  }
+  function closestStatusButton(target){
+    while (target && target !== document) {
+      if (target.dataset && (target.dataset.v191Status !== undefined || target.dataset.status !== undefined)) return target;
+      target = target.parentNode;
+    }
+    return null;
+  }
+  function closestCard(target){
+    while (target && target !== document) {
+      if (target.getAttribute && target.getAttribute("data-row-id")) return target;
+      target = target.parentNode;
+    }
+    return null;
+  }
+  function setActive(card, status, button){
+    if (!card) return;
+    Array.prototype.slice.call(card.querySelectorAll('[data-status],[data-v191-status]')).forEach(function(btn){
+      var value = text(btn.getAttribute("data-v191-status") || btn.getAttribute("data-status") || btn.textContent);
+      btn.classList.toggle("active", value === status || btn === button);
+    });
+  }
+  function updateStatus(event){
+    var button = closestStatusButton(event.target);
+    if (!button) return;
+    var status = text(button.getAttribute("data-v191-status") || button.getAttribute("data-status") || button.textContent);
+    if (!VALID[status]) return;
+    var card = closestCard(button);
+    var row = card ? rowByIdSafe(card.getAttribute("data-row-id")) : null;
+    if (!row) return;
+    row.status = status;
+    if (status === "Met") {
+      row.actionText = text(row.actionText);
+    }
+    setActive(card, status, button);
+    try {
+      var obs = card.querySelector('[data-field="observation"],[data-v191-field="observation"]');
+      if (obs) row.observation = obs.value;
+      var act = card.querySelector('[data-field="actionText"],[data-v191-field="actionText"]');
+      if (act) row.actionText = act.value;
+    } catch(e) {}
+    if (event.type === "click") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }
+  function install(){
+    document.addEventListener("pointerdown", updateStatus, true);
+    document.addEventListener("touchstart", updateStatus, true);
+    document.addEventListener("mousedown", updateStatus, true);
+    document.addEventListener("click", updateStatus, true);
+    var title = document.querySelector("header h1");
+    if (title) title.textContent = "Audit Manager - Status Buttons Fixed 17 Sep v33";
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install); else install();
+})();
+</script>
 </body>
 </html>
