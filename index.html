@@ -2,6 +2,36 @@
 <html lang="en">
 <head>
 
+<script id="audit-element-suggestions">
+// Suggestions use the audited element alone, never the room name or unrelated fixtures.
+window.auditElementSuggestions = function(row) {
+  var element = String(row.element || 'This element').trim();
+  var value = element.toLowerCase();
+  if (row.status === 'N/A') return {obs:['Not present at time of audit','Outside agreed cleaning scope'],act:['No action required']};
+  if (!row.status || row.status === 'Met') return {obs:['Standard met at the time of audit.'],act:['No action required']};
+  var options = [];
+  function add(pattern, observation, action) { if (pattern.test(value)) options.push([observation, action]); }
+  add(/\bfloors?\b|vacuum|hoover|matting/, 'Visible debris or marks on the floor', 'Hoover/vacuum and mop the floor within the agreed scope; re-check when dry');
+  add(/\bbins?\b|waste|receptacle/, 'Bin not emptied or liner requires replacement', 'Empty the domestic bin and replace the liner where required');
+  add(/toilet pan|toilet seat|toilet fitting|urinal|sanitary fitting/, 'Visible marks on the toilet or sanitary fitting', 'Re-clean the specified toilet or sanitary fitting and re-check');
+  add(/sink|basin|splashback|\btaps?\b/, 'Residue or water marks on the sink, taps or splashback', 'Re-clean the sink, taps and splashback included in this element');
+  add(/mirror/, 'Smears visible on the mirror', 'Clean and polish the mirror');
+  add(/glazing|\bglass\b|vision panel|window/, 'Smears or finger marks on the glass', 'Clean the glazing included in this element and check for smears');
+  add(/radiator|pipework/, 'Dust or marks on the radiator or pipework', 'Detail clean the accessible radiator or pipework included in this element');
+  add(/skirting|\bwalls?\b|ledges?/, 'Dust or marks on the specified wall, ledge or skirting', 'Clean the affected wall, ledge or skirting within the agreed scope');
+  add(/high.level|cobweb|\bvents?\b|ceiling/, 'High-level dust or cobwebs visible', 'Remove high-level dust or cobwebs where safely accessible within the agreed scope');
+  add(/handrail|banister/, 'Marks or dust on the handrail or banister', 'Clean the accessible handrail or banister and re-check');
+  add(/doors?|switch|touchpoint|push plate/, 'Marks on the specified door or touchpoints', 'Clean the door or touchpoints included in this element');
+  add(/chair|seating|furniture/, 'Dust or marks on the specified furniture', 'Clean the affected furniture within the agreed scope');
+  add(/keyboard|mouse|telephone|printer|computer/, 'Marks on external equipment surfaces', 'Clean only the external equipment surfaces included in the agreed scope');
+  add(/dispenser|hand dryer/, 'Marks on the dispenser or hand dryer casing', 'Clean the specified external casing');
+  add(/fridge|microwave|kettle|appliance/, 'Marks on the appliance exterior', 'Clean the appliance exterior included in this element');
+  add(/desk|counter|worktop|\btable\b/, 'Dust or marks on the specified surface', 'Clean the affected surface within the agreed scope');
+  if (!options.length) return {obs:['Standard not achieved for: ' + element],act:['Correct the recorded issue for this element within the agreed scope: ' + element]};
+  return {obs:options.map(function(pair){return pair[0];}),act:options.map(function(pair){return pair[1];})};
+};
+
+</script>
 <script id="v57-early-localstorage-recovery">
 (function(){
   var KEY = 'simplifying_cleaning_v11_stable';
@@ -22729,6 +22759,7 @@ body.v123PhotoFix input[data-photo]{
   }
 
   function suggestions(row){
+    return window.auditElementSuggestions(row);
     var v = norm(row.element);
     if (/glazing|glass|window|vision|screen/.test(v)) return { obs:["Finger marks visible","Smears noted","Edges require detail clean","Ledge dusty"], act:["Clean glazing","Polish glass","Detail clean ledge","Supervisor recheck"] };
     if (/skirting|floor edge/.test(v)) return { obs:["Skirting boards dusty","Floor edges require detail clean","Build-up noted to edges","Low-level detail missed"], act:["Clean skirting boards","Detail clean floor edges","Remove low-level build-up","Add to periodic detail clean"] };
@@ -22754,6 +22785,8 @@ body.v123PhotoFix input[data-photo]{
     var areas = [];
     rows.forEach(function(row){ if (row.area && !areas.some(function(area){ return norm(area) === norm(row.area); })) areas.push(row.area); });
     if (!areas.some(function(area){ return norm(area) === norm(activeAuditArea); })) activeAuditArea = areas[0] || "";
+    var usedIds = new Set();
+    rows.forEach(function(row){ if (!row.id || usedIds.has(String(row.id))) row.id = "row_" + crypto.randomUUID(); usedIds.add(String(row.id)); });
     var visibleRows = activeAuditArea ? rows.filter(function(row){ return norm(row.area) === norm(activeAuditArea); }) : rows;
     wrap.innerHTML = visibleRows.map(function(row){
       var sug = suggestions(row);
@@ -24269,6 +24302,7 @@ body.v123PhotoFix input[data-photo]{
   }
 
   function suggestions(row){
+    return window.auditElementSuggestions(row);
     var kind = elementType(row.element);
     var status = row.status || "Met";
     var met = {
@@ -24569,6 +24603,8 @@ body.v123PhotoFix input[data-photo]{
     if (!wrap || !rows().length) return;
     var areas = areaNames();
     if (!areas.some(function(area){ return norm(area) === norm(activeAuditAreaV177); })) activeAuditAreaV177 = areas[0] || "";
+    var usedIds = new Set();
+    rows().forEach(function(row){ if (!row.id || usedIds.has(String(row.id))) row.id = uid("row"); usedIds.add(String(row.id)); });
     var visibleRows = activeAuditAreaV177 ? rows().filter(function(row){ return norm(row.area) === norm(activeAuditAreaV177); }) : rows();
     wrap.innerHTML = visibleRows.map(function(row){
       var sug = suggestions(row);
@@ -24711,6 +24747,10 @@ body.v123PhotoFix input[data-photo]{
   window.v177AuditWorkflow = {
     loadAuditForEdit: loadAuditForEdit,
     saveCurrentAudit: saveCurrentAudit,
+    getEditingId: function(){ return editingAuditId; },
+    finishEdit: function(){ editingAuditId = ""; },
+    scoreRows: weightedScore,
+    ratingFor: band,
     refreshLayout: refreshLayout
   };
 
@@ -25743,7 +25783,7 @@ body.v123PhotoFix input[data-photo]{
       var fr = isHealthcareType(type) ? (areaRows.map(function(row){ return text(row.fr).trim(); }).filter(Boolean)[0] || "") : "";
       lockedElements(type, area).forEach(function(element){
         var key = elementKey(element);
-        var matches = areaRows.filter(function(row){ return elementKey(row.element) === key; });
+        var matches = (areaRows.some(function(row){ return norm(row.element) === norm(element); }) ? areaRows.filter(function(row){ return norm(row.element) === norm(element); }) : areaRows.filter(function(row){ return elementKey(row.element) === key; }));
         output.push(makeRow(area, fr, element, matches));
       });
     });
@@ -27055,6 +27095,7 @@ body:not(.v187AuthLocked) #v187CloudHost{
     return "general";
   }
   function suggestions(row){
+    return window.auditElementSuggestions(row);
     var kind = elementKind(row.element);
     var status = row.status || "Met";
     var obs = {
@@ -27193,6 +27234,8 @@ body:not(.v187AuthLocked) #v187CloudHost{
       if (old) old.remove();
       return;
     }
+    var usedIds = new Set();
+    rows().forEach(function(row){ if (!row.id || usedIds.has(String(row.id))) row.id = uid("row"); usedIds.add(String(row.id)); });
     var visible = rows().filter(function(row){ return norm(row.area) === norm(activeArea || areas()[0]); });
     if (!visible.length) visible = rows();
     wrap.innerHTML = visible.map(function(row){
@@ -27244,8 +27287,7 @@ body:not(.v187AuthLocked) #v187CloudHost{
     if (target.id === "v191SaveAudit") {
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (window.v177AuditWorkflow && window.v177AuditWorkflow.saveCurrentAudit) window.v177AuditWorkflow.saveCurrentAudit();
-      else if (typeof window.saveAudit === "function") window.saveAudit();
+      if (typeof window.saveAudit === "function") window.saveAudit();
       return;
     }
     if (target.id === "v191AddRoomBtn") {
@@ -29089,6 +29131,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     setDraftRows(canonicalRows(rows, type, loc));
   }
   function suggestionSet(row){
+    return window.auditElementSuggestions(row);
     var status = row && row.status || "Met";
     var kind = elementKey(row && row.element);
     var base = {
@@ -29464,7 +29507,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       var areaRows = list.filter(function(row){ return norm(row.area) === norm(area); });
       commercialElements(area).forEach(function(element){
         var key = elementKey(element);
-        out.push(makeRow(area, element, areaRows.filter(function(row){ return elementKey(row.element) === key; })));
+        out.push(makeRow(area, element, (areaRows.some(function(row){ return norm(row.element) === norm(element); }) ? areaRows.filter(function(row){ return norm(row.element) === norm(element); }) : areaRows.filter(function(row){ return elementKey(row.element) === key; }))));
       });
     });
     return out;
@@ -29556,7 +29599,8 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
         safety:["Remove obstruction and make area safe","Escalate safety concern to site contact","Review storage/method to prevent recurrence"],
         general:["Re-clean item and re-check","Discuss recurring issue with cleaning team","Add item to next supervisor check"]
       };
-      var set = status === "Met"
+      var set = window.auditElementSuggestions(row);
+      var unusedLegacySet = status === "Met"
         ? {obs:(obs[kind] || obs.general).filter(function(x){ return /clean|standard met|safe/.test(x.toLowerCase()); }).slice(0,3), act:["No action required"]}
         : status === "N/A"
           ? {obs:["Not applicable to this room","Outside agreed cleaning scope","Not present at time of audit"], act:["No action required"]}
@@ -30148,7 +30192,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       var fr = areaRows.map(function(row){ return text(row.fr); }).filter(Boolean)[0] || text(room.fr);
       elements(area).forEach(function(element){
         var key = elementKey(element);
-        out.push(makeRow(area, fr, element, areaRows.filter(function(row){ return elementKey(row.element) === key; })));
+        out.push(makeRow(area, fr, element, (areaRows.some(function(row){ return norm(row.element) === norm(element); }) ? areaRows.filter(function(row){ return norm(row.element) === norm(element); }) : areaRows.filter(function(row){ return elementKey(row.element) === key; }))));
       });
     });
     return out;
@@ -31800,6 +31844,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   var MAIN_KEYS = ["simplifying_cleaning_v11_stable", "simplifying_cleaning_audit_manager_v11"];
   var ARCHIVE_KEYS = ["simplifying_cleaning_photo_archive_v213", "simplifying_cleaning_photo_archive_v209", "simplifying_cleaning_photo_archive_v208"];
   var saving = false;
+  var lastSavedId = "";
   function E(id){ return document.getElementById(id); }
   function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
   function uid(prefix){ return (prefix || "id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8); }
@@ -31818,34 +31863,32 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     ARCHIVE_KEYS.forEach(function(key){ try { localStorage.removeItem(key); } catch(e) {} });
   }
   function persistState(s){
-    clearReportPhotoCache();
-    var raw = JSON.stringify(s || stateSafe());
-    var lastError = null;
-    for (var i = 0; i < MAIN_KEYS.length; i++) {
-      try { localStorage.setItem(MAIN_KEYS[i], raw); }
-      catch(error) { lastError = error; clearReportPhotoCache(); try { localStorage.setItem(MAIN_KEYS[i], raw); lastError = null; } catch(retryError) { lastError = retryError; } }
-    }
-    try { if (typeof KEY !== "undefined" && KEY) localStorage.setItem(KEY, raw); } catch(error) { lastError = lastError || error; }
-    if (lastError) throw lastError;
+    var raw = JSON.stringify(s);
+    var key = typeof KEY !== "undefined" && KEY ? KEY : MAIN_KEYS[0];
+    localStorage.setItem(key, raw);
+    if (localStorage.getItem(key) !== raw) throw new Error("Saved audit could not be verified on this device.");
   }
   function currentLocation(){
     var s = stateSafe();
     try { if (typeof window.currentLocation === "function") { var loc = window.currentLocation(); if (loc) return loc; } } catch(e) {}
-    var id = text((E("auditLocation") || E("v162Location") || {}).value);
+    var id = text((E("v162Location") || E("auditLocation") || {}).value);
     return (s.locations || []).find(function(loc){ return String(loc.id) === String(id); }) || null;
   }
   function currentRows(){
+    if (typeof draftRows !== "undefined" && Array.isArray(draftRows)) return clone(draftRows);
     try { if (typeof window.rows === "function") return clone(window.rows()) || []; } catch(e) {}
     try { if (typeof rows === "function") return clone(rows()) || []; } catch(e) {}
     try { if (Array.isArray(window.auditRows)) return clone(window.auditRows); } catch(e) {}
     return [];
   }
   function currentActions(){
+    if (typeof draftActions !== "undefined" && Array.isArray(draftActions)) return clone(draftActions);
     try { if (typeof window.actions === "function") return clone(window.actions()) || []; } catch(e) {}
     try { if (typeof actions === "function") return clone(actions()) || []; } catch(e) {}
     return [];
   }
   function scoreRows(list, type){
+    if (window.v177AuditWorkflow && window.v177AuditWorkflow.scoreRows) return window.v177AuditWorkflow.scoreRows(list, type);
     try { if (typeof weightedScore === "function") return weightedScore(list, type); } catch(e) {}
     try { if (typeof weighted === "function") return weighted(list, type); } catch(e) {}
     var total = 0, got = 0;
@@ -31864,6 +31907,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     return score >= 90 ? "Met" : score >= 75 ? "Partially met" : "Not met";
   }
   function bandFor(type, score){
+    if (window.v177AuditWorkflow && window.v177AuditWorkflow.ratingFor) return window.v177AuditWorkflow.ratingFor(type, score);
     try { if (typeof rating === "function") return rating(type, score); } catch(e) {}
     return outcomeFor(score);
   }
@@ -31874,6 +31918,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     return text(box && box.value) || "Audit completed for " + (loc.name || loc.siteName || "this location") + ". This audit is based on a representative sample of rooms and cleaning elements checked at the time of audit. Overall score " + (score === null || score === undefined ? "N/A" : score + "%") + ".";
   }
   function editingId(){
+    if (window.v177AuditWorkflow && window.v177AuditWorkflow.getEditingId) return window.v177AuditWorkflow.getEditingId();
     try { if (typeof editingAuditId !== "undefined" && editingAuditId) return String(editingAuditId); } catch(e) {}
     try { if (window.v177AuditWorkflow && window.v177AuditWorkflow.editingAuditId) return String(window.v177AuditWorkflow.editingAuditId); } catch(e) {}
     return "";
@@ -31896,14 +31941,14 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     try { if (typeof renderActions === "function") renderActions(); } catch(e) {}
     try { if (typeof renderAll === "function") renderAll(); } catch(e) {}
   }
-  function saveDirect(){
+  async function saveDirect(){
     var loc = currentLocation();
     if (!loc) { alert("Select and load a location before saving."); return; }
     var list = currentRows();
     if (!list.length) { alert("Load an audit before saving."); return; }
-    var s = stateSafe();
+    var s = clone(stateSafe());
     var score = scoreRows(list, loc.type || loc.locationType || "commercial");
-    var id = editingId() || uid("audit");
+    var id = editingId() || lastSavedId || uid("audit");
     var audit = {
       id:id,
       locationId:loc.id,
@@ -31923,16 +31968,32 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     };
     var beforeCount = s.audits.length;
     var idx = s.audits.findIndex(function(item){ return String(item.id) === String(id); });
-    if (idx >= 0) s.audits[idx] = audit;
+    if (idx >= 0) {
+      var previous = s.audits[idx];
+      audit = Object.assign({}, previous, audit, {createdAt:previous.createdAt || audit.createdAt, hs:previous.hs || audit.hs});
+      s.audits[idx] = audit;
+    }
     else s.audits.unshift(audit);
     s.actions = (s.actions || []).filter(function(action){ return String(action.sourceAuditId) !== String(id); }).concat(actionRows(audit, list));
     persistState(s);
+    state = s;
+    if (window.v177AuditWorkflow && window.v177AuditWorkflow.finishEdit) window.v177AuditWorkflow.finishEdit();
+    // Keep the saved audit as the edit target, so a retry cannot create duplicates.
+    lastSavedId = id;
     var after = stateSafe();
     var exists = (after.audits || []).some(function(item){ return String(item.id) === String(id); });
     if (!exists) throw new Error("The audit could not be verified in saved history.");
     try { if (typeof editingAuditId !== "undefined") editingAuditId = ""; } catch(e) {}
     refresh();
-    alert(idx >= 0 ? "Audit updated and saved." : "Audit saved. History now has " + (after.audits || []).length + " audit(s). It had " + beforeCount + " before this save.");
+    var message = idx >= 0 ? "Audit updated and saved on this device." : "Audit saved on this device.";
+    try {
+      if (window.v187OnlineDatabase && typeof window.v187OnlineDatabase.save === "function") {
+        await window.v187OnlineDatabase.save({silent:true});
+        message += " Online backup saved.";
+      } else message += " Online backup is not connected.";
+    } catch(error) { message += " Online backup failed: " + (error.message || error) + ". Your local audit is saved; retry Save online from Backup."; }
+    alert(message);
+    return audit;
   }
   function handleSave(event){
     var target = event && event.target;
@@ -31948,9 +32009,13 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     Promise.resolve().then(saveDirect).catch(function(error){ alert("Save failed: " + (error && error.message ? error.message : error)); }).finally(function(){ saving = false; });
   }
   function install(){
-    clearReportPhotoCache();
-    document.addEventListener("click", handleSave, true);
-    window.saveAudit = function(){ return saveDirect(); };
+    window.addEventListener("click", function(event){ if (event.target && (event.target.id === "v162LoadAudit" || event.target.id === "loadAudit")) lastSavedId = ""; }, true);
+    window.addEventListener("click", handleSave, true);
+    window.saveAudit = function(){
+      if (saving) return;
+      saving = true;
+      return Promise.resolve().then(saveDirect).catch(function(error){ alert("Audit was not saved: " + (error.message || error) + ". Your checklist is still open; do not close this page."); }).finally(function(){ saving = false; });
+    };
     try { saveAudit = window.saveAudit; } catch(e) {}
     var title = document.querySelector("header h1");
     if (title) title.textContent = "Audit Manager - Save Restored 17 Sep v32";
@@ -31963,6 +32028,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   var VALID = {"Met":true, "Partially met":true, "Not met":true, "N/A":true};
   function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
   function rowsSafe(){
+    if (typeof draftRows !== "undefined" && Array.isArray(draftRows)) return draftRows;
     try { if (typeof window.rows === "function") return window.rows() || []; } catch(e) {}
     try { if (typeof rows === "function") return rows() || []; } catch(e) {}
     try { if (Array.isArray(window.auditRows)) return window.auditRows; } catch(e) {}
