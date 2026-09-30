@@ -26132,6 +26132,10 @@ body.v123PhotoFix input[data-photo]{
 
 <script id="v187-isolated-online-database-box">
 (function(){
+  // Capture recovery intent before Supabase consumes the callback URL.
+  var loginReturnType = new URLSearchParams(window.location.search || "").get("type") ||
+    new URLSearchParams(String(window.location.hash || "").replace(/^#/, "")).get("type") || "";
+
   var SUPABASE_URL = "https://nllvgkrflfqtnfbahvwb.supabase.co";
   var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sbHZna3JmbGZxdG5mYmFodndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNDUwMDQsImV4cCI6MjEwMjYyMTAwNH0.mMXpE0viRy6Eomii9upP6_2BplokYmTX9zpwo7on4p0";
   var CLOUD_BACKUP_NAME = "live_audit_system_state";
@@ -26651,9 +26655,12 @@ body.v123PhotoFix input[data-photo]{
         else updateStatus();
       });
       status("Checking online login...");
-      handleLoginReturn().then(function(result){
-        var handled = result && result.handled;
-        var type = result && result.type;
+      // getSession waits for Supabase's automatic callback processing. Do not
+      // exchange the same one-time login code a second time in this panel.
+      sb.auth.getSession().then(function(result){
+        if (result && result.error) throw result.error;
+        var handled = !!(result && result.data && result.data.session);
+        var type = loginReturnType;
         if (handled && type === "recovery") {
           showPasswordResetMode();
           return;
@@ -32437,3 +32444,4 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
 </script>
 </body>
 </html>
+
