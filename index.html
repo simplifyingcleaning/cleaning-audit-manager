@@ -28367,6 +28367,16 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
 
 <script id="v196-bottom-room-dock">
 (function(){
+  function stateSafe(){ try { return state || {locations:[],audits:[],actions:[]}; } catch(e) { return {locations:[],audits:[],actions:[]}; } }
+  function currentLocation(){
+    var id = text((E("v162Location") || E("auditLocation") || {}).value);
+    return (stateSafe().locations || []).find(function(loc){ return String(loc.id) === String(id); }) || null;
+  }
+  function isHealthcare(type){ return /^(dental|healthcare|health care)$/i.test(text(type)); }
+  function setRows(next){ draftRows = next; }
+  function uid(prefix){ return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2); }
+  function commit(next){ state = next; if (typeof saveState === "function") saveState(); }
+
   function E(id){ return document.getElementById(id); }
   function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
   function esc(value){ return String(value === null || value === undefined ? "" : value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
