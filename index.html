@@ -1,6 +1,28 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script id="v219-shared-cloud-client">
+/* One auth session/client for all legacy panels; requests cannot wait forever. */
+window.v219CloudClient=(function(){
+  var clients=new Map();
+  return function(url,key,options){
+    if(!clients.has(url)){
+      var config=Object.assign({},options);
+      config.global=Object.assign({},config.global,{fetch:async function(input,init){
+        var controller=new AbortController(),signal=init&&init.signal;
+        var cancel=function(){controller.abort();};
+        if(signal){if(signal.aborted)cancel();else signal.addEventListener('abort',cancel,{once:true});}
+        var timer=setTimeout(cancel,25000);
+        try{return await fetch(input,Object.assign({},init,{signal:controller.signal}));}
+        finally{clearTimeout(timer);if(signal)signal.removeEventListener('abort',cancel);}
+      }});
+      clients.set(url,window.supabase.createClient(url,key,config));
+    }
+    return clients.get(url);
+  };
+})();
+
+</script>
 
 <script id="audit-element-suggestions">
 // Suggestions use the audited element alone, never the room name or unrelated fixtures.
@@ -21970,6 +21992,7 @@ body.v123PhotoFix input[data-photo]{
   }
 
   function currentState(){
+    if(window.v219Store && typeof state !== "undefined" && state) return normaliseState(state);
     try {
       var raw = localStorage.getItem(STORE_KEY);
       if (raw) {
@@ -22448,6 +22471,7 @@ body.v123PhotoFix input[data-photo]{
   }
 
   function savedState(){
+    if(window.v219Store) return appState();
     try {
       var raw = localStorage.getItem(STORE_KEY);
       if (raw) return normaliseState(safeParse(raw));
@@ -25318,7 +25342,7 @@ body.v123PhotoFix input[data-photo]{
   async function getClient(){
     if (client) return client;
     await loadSupabaseScript();
-    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    client = window.v219CloudClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, flowType:"pkce" }
     });
     return client;
@@ -26006,7 +26030,7 @@ body.v123PhotoFix input[data-photo]{
   async function getClient(){
     if (client) return client;
     await loadSupabaseScript();
-    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    client = window.v219CloudClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth:{ persistSession:true, autoRefreshToken:true }
     });
     return client;
@@ -26130,6 +26154,98 @@ body.v123PhotoFix input[data-photo]{
 })();
 </script>
 
+<script id="v219-durable-records">
+/* Durable audit storage and non-destructive cross-device reconciliation. */
+(function(){
+  'use strict';
+  var dbPromise, queue = Promise.resolve(), baseline = null;
+  var collections = ['locations','audits','actions'];
+  function copy(x){ return JSON.parse(JSON.stringify(x)); }
+  function stamp(x){ return Date.parse(x && (x.updatedAt || x.createdAt)) || 0; }
+  function merge(remote, local){
+    remote = remote || {}; local = local || {};
+    var result = Object.assign({}, remote, local);
+    collections.forEach(function(key){
+      var records = new Map();
+      (remote[key] || []).forEach(function(row){ records.set(String(row.id), copy(row)); });
+      (local[key] || []).forEach(function(row){
+        var old = records.get(String(row.id));
+        if (!old || stamp(row) > stamp(old)) records.set(String(row.id), copy(row));
+      });
+      result[key] = Array.from(records.values());
+    });
+    return result;
+  }
+  function database(){
+    if (!dbPromise) dbPromise = new Promise(function(resolve,reject){
+      if (!window.indexedDB) return reject(new Error('Device storage is unavailable.'));
+      var request = indexedDB.open('simplifying_cleaning_records_v219',1);
+      request.onupgradeneeded = function(){ request.result.createObjectStore('records'); };
+      request.onerror = function(){ reject(request.error); };
+      request.onblocked = function(){ reject(new Error('Close other audit tabs and retry saving.')); };
+      request.onsuccess = function(){ resolve(request.result); };
+    });
+    return dbPromise;
+  }
+  async function read(key){
+    var db = await database();
+    return new Promise(function(resolve,reject){
+      var request=db.transaction('records','readonly').objectStore('records').get(key);
+      request.onsuccess=function(){resolve(request.result);};
+      request.onerror=function(){reject(request.error);};
+    });
+  }
+  async function write(key,value){
+    var db = await database();
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction('records','readwrite');
+      tx.objectStore('records').put(value,key);
+      tx.oncomplete=function(){resolve();};
+      tx.onabort=tx.onerror=function(){reject(tx.error || new Error('Device storage is full.'));};
+    });
+  }
+  function status(message){
+    var box=document.getElementById('v219SyncStatus');
+    if(box) box.textContent=message;
+  }
+  function changed(next){
+    var now=new Date().toISOString();
+    if(baseline) collections.forEach(function(key){
+      var old=new Map((baseline[key]||[]).map(function(row){return [String(row.id),JSON.stringify(row)];}));
+      (next[key]||[]).forEach(function(row){
+        if(old.get(String(row.id)) !== JSON.stringify(row)) row.updatedAt=now;
+      });
+    });
+    return next;
+  }
+  function persist(next, markChanges){
+    var snapshot=copy(markChanges===false ? next : changed(next));
+    var run=queue.catch(function(){}).then(async function(){
+      var idbError, localError;
+      try{await write('current',snapshot);}catch(e){idbError=e;}
+      try{
+        var raw=JSON.stringify(snapshot);
+        localStorage.setItem(KEY,raw);
+        if(localStorage.getItem(KEY)!==raw) throw new Error('Local save verification failed.');
+      }catch(e){localError=e;}
+      if(idbError && localError) throw new Error('This device could not save the audit. Keep this page open and free some storage, then retry.');
+      baseline=copy(snapshot);
+      return snapshot;
+    });
+    queue=run;
+    return run;
+  }
+  var ready=(async function(){
+    var stored=await read('current').catch(function(){return null;});
+    if(stored) state=merge(state,stored);
+    // A separate, immutable pre-upgrade checkpoint is retained locally.
+    if(!await read('before-v219').catch(function(){return true;})) await write('before-v219',copy(state)).catch(function(){});
+    baseline=copy(state);
+  })();
+  window.v219Store={merge:merge,persist:persist,ready:ready,read:read,write:write,status:status,copy:copy};
+})();
+
+</script>
 <script id="v187-isolated-online-database-box">
 (function(){
   // Capture recovery intent before Supabase consumes the callback URL.
@@ -26229,7 +26345,7 @@ body.v123PhotoFix input[data-photo]{
   async function getClient(){
     if (client) return client;
     await loadSupabaseScript();
-    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    client = window.v219CloudClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth:{ persistSession:true, autoRefreshToken:true }
     });
     return client;
@@ -26520,26 +26636,12 @@ body.v123PhotoFix input[data-photo]{
       return legacy.data[0].backup_data || {};
     }
     async function autoLoadOnlineIfUseful(){
-      var user = await currentUser();
-      if (!user) return;
-      var sb = await getClient();
-      var backup = await latestOnlineBackup(sb);
-      if (!backup) {
-        status("Signed in as " + (user.email || "approved user") + ", but no shared online backup is visible. Run the Supabase shared-access SQL, then save online from the device with the audits.");
-        return;
+      await window.v219Store.ready;
+      if(window.v187OnlineDatabase && window.v187OnlineDatabase.load) {
+        var result=await window.v187OnlineDatabase.load({silent:true});
+        if(await window.v219Store.read("pending-online").catch(function(){return false;})) await window.v187OnlineDatabase.save({silent:true});
+        return result;
       }
-      var local = counts();
-      var online = backupCountsFrom(backup);
-      var deviceIsEmpty = !local.locations && !local.audits && !local.actions;
-      var onlineLooksNewer = online.audits > local.audits || online.locations > local.locations || online.actions > local.actions;
-      if (!deviceIsEmpty && !onlineLooksNewer) {
-        status("Signed in. This device already has the latest saved audit data.");
-        return;
-      }
-      setAppState(backup.state || backup);
-      refreshApp();
-      var c = counts();
-      status("Loaded online backup: " + c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)." + (window.v187StorageWarning ? " " + window.v187StorageWarning : ""));
     }
     async function saveOnlineNow(){
       try {
@@ -28639,7 +28741,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   async function getClient(){
     if (client) return client;
     await loadSupabaseScript();
-    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    client = window.v219CloudClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth:{ persistSession:true, autoRefreshToken:true }
     });
     return client;
@@ -30697,7 +30799,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       document.head.appendChild(script);
     });
   }
-  async function getClient(){ if (client) return client; await loadSupabaseScript(); client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}}); return client; }
+  async function getClient(){ if (client) return client; await loadSupabaseScript(); client = window.v219CloudClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}}); return client; }
   async function currentUser(sb){ var res = await sb.auth.getUser(); var user = res && res.data ? res.data.user : null; if (!user) throw new Error("Not signed in. Sign in first, then try again."); return user; }
   function supabaseError(error, fallback){ return new Error((error && error.message ? error.message : fallback || "Supabase failed") + (error && error.details ? " Details: " + error.details : "") + (error && error.hint ? " Hint: " + error.hint : "") + (error && error.code ? " Code: " + error.code : "")); }
   async function latestBackup(sb){
@@ -30880,7 +30982,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       document.head.appendChild(script);
     });
   }
-  async function getClient(){ if (client) return client; await loadSupabaseScript(); client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}}); return client; }
+  async function getClient(){ if (client) return client; await loadSupabaseScript(); client = window.v219CloudClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}}); return client; }
   async function currentUser(sb){ var res = await sb.auth.getUser(); var user = res && res.data ? res.data.user : null; if (!user) throw new Error("Not signed in. Sign in first, then try again."); return user; }
   function supabaseError(error, fallback){ return new Error((error && error.message ? error.message : fallback || "Supabase failed") + (error && error.details ? " Details: " + error.details : "") + (error && error.hint ? " Hint: " + error.hint : "") + (error && error.code ? " Code: " + error.code : "")); }
   async function latestBackup(sb){
@@ -30994,7 +31096,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
   function clone(value){ try { return JSON.parse(JSON.stringify(value)); } catch(e) { return value; } }
   function stateSafe(){ try { return state || {locations:[],audits:[],actions:[]}; } catch(e) { return {locations:[],audits:[],actions:[]}; } }
-  function setStatus(message){ var el = document.getElementById("backupOnlineStatus"); if (el) el.textContent = message; }
+  function setStatus(message){ if(window.v219Store) window.v219Store.status(message); var el = document.getElementById("backupOnlineStatus"); if (el) el.textContent = message; }
   function counts(s){ s = s && s.state ? s.state : s; s = s || {}; return {locations:Array.isArray(s.locations) ? s.locations.length : 0,audits:Array.isArray(s.audits) ? s.audits.length : 0,actions:Array.isArray(s.actions) ? s.actions.length : 0}; }
   function describe(c){ return c.locations + " location(s), " + c.audits + " audit(s), " + c.actions + " action(s)"; }
   function photoId(ref){ return text(ref).replace(PHOTO_PREFIX, ""); }
@@ -31028,11 +31130,11 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     }
     return "";
   }
-  async function writePhoto(dataUrl, meta){
+  async function writePhoto(dataUrl, meta, existingRef){
     if (!/^data:image\//i.test(text(dataUrl))) return "";
     var db = await openDb(PRIMARY_DB, true);
     return await new Promise(function(resolve, reject){
-      var id = "photo_" + Math.random().toString(36).slice(2) + Date.now();
+      var id = existingRef && existingRef.indexOf(PHOTO_PREFIX) === 0 ? photoId(existingRef) : "photo_" + Math.random().toString(36).slice(2) + Date.now();
       var tx = db.transaction("photos", "readwrite");
       tx.objectStore("photos").put({id:id, dataUrl:dataUrl, createdAt:new Date().toISOString(), meta:meta || {}});
       tx.oncomplete = function(){ db.close(); resolve(PHOTO_PREFIX + id); };
@@ -31072,7 +31174,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
           var ref = text(row.photos[p]);
           var data = /^data:image\//i.test(ref) ? ref : archive[ref] || archive["inline:" + a + ":" + i + ":" + p] || "";
           if (data) {
-            try { row.photos[p] = await writePhoto(data, {auditId:audit.id, rowId:row.id, area:row.area, element:row.element}); restored++; }
+            try { row.photos[p] = await writePhoto(data, {auditId:audit.id, rowId:row.id, area:row.area, element:row.element}, ref); restored++; }
             catch(e) { row.photos[p] = data; }
           }
         }
@@ -31095,7 +31197,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       document.head.appendChild(script);
     });
   }
-  async function getClient(){ if (client) return client; await loadSupabaseScript(); client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}}); return client; }
+  async function getClient(){ if (client) return client; await loadSupabaseScript(); client = window.v219CloudClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}}); return client; }
   async function currentUser(sb){ var res = await sb.auth.getUser(); var user = res && res.data ? res.data.user : null; if (!user) throw new Error("Not signed in. Sign in first, then try again."); return user; }
   function supabaseError(error, fallback){ return new Error((error && error.message ? error.message : fallback || "Supabase failed") + (error && error.details ? " Details: " + error.details : "") + (error && error.hint ? " Hint: " + error.hint : "") + (error && error.code ? " Code: " + error.code : "")); }
   async function latestBackup(sb){
@@ -31119,15 +31221,24 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     try {
       var sb = await getClient();
       var user = await currentUser(sb);
-      var local = stateSafe();
+      await window.v219Store.ready;
+      var local = await window.v219Store.persist(stateSafe());
+      var existing = await latestBackup(sb);
+      local = window.v219Store.merge(existing && (existing.state || existing), local);
       var c = counts(local);
       if (!c.locations && !c.audits && !c.actions) throw new Error("Save blocked because this device has no audit data showing.");
       var built = await buildPhotoArchive(local);
+      built.archive = Object.assign({}, existing && existing.photoArchive || {}, built.archive);
       var photoCount = Object.keys(built.archive).length;
       setStatus("Saving online: found " + photoCount + " photo(s), missing " + built.missing + " old reference(s)...");
-      var payload = {saved_at:new Date().toISOString(), app_version:"v208-multi-store-report-photo-fix", state:local, photoArchive:built.archive, photoArchiveCount:photoCount, missingPhotoRefs:built.missing};
+      var payload = {saved_at:new Date().toISOString(), app_version:"v219-durable-mobile-sync", state:local, photoArchive:built.archive, photoArchiveCount:photoCount, missingPhotoRefs:built.missing};
       var res = await sb.from("audit_backups").insert({user_id:user.id, backup_name:BACKUP_NAME, backup_data:payload});
       if (res.error) throw supabaseError(res.error, "Could not save online backup");
+      var latestLocal = window.v219Store.merge(local, stateSafe());
+      var stillPending = JSON.stringify(latestLocal.audits) !== JSON.stringify(local.audits);
+      await window.v219Store.persist(latestLocal, false);
+      writeState(latestLocal);
+      await window.v219Store.write("pending-online", stillPending).catch(function(){});
       setStatus("Saved online: " + describe(c) + ". Photo archive contains " + photoCount + " photo(s); missing " + built.missing + ".");
       return c;
     } catch(error) { setStatus("Save failed: " + (error && error.message ? error.message : error)); throw error; }
@@ -31135,6 +31246,8 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   async function loadOnline(options){
     try {
       options = options || {};
+      await window.v219Store.ready;
+      var localBeforeLoad = await window.v219Store.persist(stateSafe());
       var sb = await getClient();
       await currentUser(sb);
       if (!options.silent && !confirm("Load the latest shared online backup onto this device, including photos?")) return counts(stateSafe());
@@ -31143,6 +31256,8 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       if (!backup) throw new Error("No online backup was found.");
       var archive = backup.photoArchive || {};
       var restored = await applyPhotoArchive(backup.state || backup, archive);
+      restored.state = window.v219Store.merge(restored.state, localBeforeLoad);
+      await window.v219Store.persist(restored.state, false);
       writeState(restored.state);
       var c = counts(restored.state);
       setStatus("Loaded online: " + describe(c) + ". Restored " + restored.restored + " photo(s). Online archive had " + Object.keys(archive).length + " photo(s).");
@@ -31210,15 +31325,19 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       } catch(e) {}
     }, 60);
   }
+  var onlineQueue = Promise.resolve();
+  function serial(fn, options){ var next=onlineQueue.catch(function(){}).then(function(){return fn(options);}); onlineQueue=next; return next; }
+  function queuedSave(options){return serial(saveOnline,options);}
+  function queuedLoad(options){return serial(loadOnline,options);}
   function wire(){
-    window.v208OnlinePhotos = {save:saveOnline, load:loadOnline, readPhoto:readPhoto};
+    window.v208OnlinePhotos = {save:queuedSave, load:queuedLoad, readPhoto:readPhoto};
     window.v187OnlineDatabase = window.v187OnlineDatabase || {};
-    window.v187OnlineDatabase.save = saveOnline;
-    window.v187OnlineDatabase.load = loadOnline;
+    window.v187OnlineDatabase.save = queuedSave;
+    window.v187OnlineDatabase.load = queuedLoad;
     var save = document.getElementById("backupSaveOnline");
     var load = document.getElementById("backupLoadOnline");
-    if (save && !save.__v208MultiStore) { save.__v208MultiStore = true; save.addEventListener("click", function(event){ event.preventDefault(); event.stopImmediatePropagation(); saveOnline().catch(function(){}); }, true); }
-    if (load && !load.__v208MultiStore) { load.__v208MultiStore = true; load.addEventListener("click", function(event){ event.preventDefault(); event.stopImmediatePropagation(); loadOnline().catch(function(){}); }, true); }
+    if (save && !save.__v208MultiStore) { save.__v208MultiStore = true; save.addEventListener("click", function(event){ event.preventDefault(); event.stopImmediatePropagation(); queuedSave().catch(function(){}); }, true); }
+    if (load && !load.__v208MultiStore) { load.__v208MultiStore = true; load.addEventListener("click", function(event){ event.preventDefault(); event.stopImmediatePropagation(); queuedLoad().catch(function(){}); }, true); }
     var nativeOpen = window.open;
     if (nativeOpen && !nativeOpen.__v208MultiStore) {
       window.open = function(){ var win = nativeOpen.apply(window, arguments); injectReportResolver(win); return win; };
@@ -31680,7 +31799,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   async function supabaseClient(){
     if (sbClient) return sbClient;
     await loadSupabaseScript();
-    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}});
+    sbClient = window.v219CloudClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}});
     return sbClient;
   }
   async function fetchLatestArchive(){
@@ -31862,6 +31981,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   var ARCHIVE_KEYS = ["simplifying_cleaning_photo_archive_v213", "simplifying_cleaning_photo_archive_v209", "simplifying_cleaning_photo_archive_v208"];
   var saving = false;
   var lastSavedId = "";
+  var lastSavedKey = "";
   function E(id){ return document.getElementById(id); }
   function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
   function uid(prefix){ return (prefix || "id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8); }
@@ -31879,12 +31999,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   function clearReportPhotoCache(){
     ARCHIVE_KEYS.forEach(function(key){ try { localStorage.removeItem(key); } catch(e) {} });
   }
-  function persistState(s){
-    var raw = JSON.stringify(s);
-    var key = typeof KEY !== "undefined" && KEY ? KEY : MAIN_KEYS[0];
-    localStorage.setItem(key, raw);
-    if (localStorage.getItem(key) !== raw) throw new Error("Saved audit could not be verified on this device.");
-  }
+  async function persistState(s){ await window.v219Store.ready; await window.v219Store.persist(s); }
   function currentLocation(){
     var s = stateSafe();
     try { if (typeof window.currentLocation === "function") { var loc = window.currentLocation(); if (loc) return loc; } } catch(e) {}
@@ -31965,7 +32080,8 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     if (!list.length) { alert("Load an audit before saving."); return; }
     var s = clone(stateSafe());
     var score = scoreRows(list, loc.type || loc.locationType || "commercial");
-    var id = editingId() || lastSavedId || uid("audit");
+    var draftKey = String(loc.id) + "|" + auditDate();
+    var id = editingId() || (lastSavedKey === draftKey ? lastSavedId : "") || uid("audit");
     var audit = {
       id:id,
       locationId:loc.id,
@@ -31981,6 +32097,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       hs:[],
       auditActions:currentActions(),
       createdAt:new Date().toISOString(),
+      updatedAt:new Date().toISOString(),
       v214SaveRecovery:true
     };
     var beforeCount = s.audits.length;
@@ -31992,11 +32109,14 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     }
     else s.audits.unshift(audit);
     s.actions = (s.actions || []).filter(function(action){ return String(action.sourceAuditId) !== String(id); }).concat(actionRows(audit, list));
-    persistState(s);
+    await persistState(s);
     state = s;
     if (window.v177AuditWorkflow && window.v177AuditWorkflow.finishEdit) window.v177AuditWorkflow.finishEdit();
     // Keep the saved audit as the edit target, so a retry cannot create duplicates.
     lastSavedId = id;
+    lastSavedKey = draftKey;
+    await window.v219Store.write("pending-online",true).catch(function(){});
+    window.v219Store.status("Saved on this device. Sending online…");
     var after = stateSafe();
     var exists = (after.audits || []).some(function(item){ return String(item.id) === String(id); });
     if (!exists) throw new Error("The audit could not be verified in saved history.");
@@ -32005,10 +32125,10 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     var message = idx >= 0 ? "Audit updated and saved on this device." : "Audit saved on this device.";
     try {
       if (window.v187OnlineDatabase && typeof window.v187OnlineDatabase.save === "function") {
-        await window.v187OnlineDatabase.save({silent:true});
+        await Promise.race([window.v187OnlineDatabase.save({silent:true}), new Promise(function(_,reject){setTimeout(function(){reject(new Error("Connection is taking too long; saved on this device and queued for retry"));},30000);})]);
         message += " Online backup saved.";
       } else message += " Online backup is not connected.";
-    } catch(error) { message += " Online backup failed: " + (error.message || error) + ". Your local audit is saved; retry Save online from Backup."; }
+    } catch(error) { window.v219Store.status("Saved on this device — waiting to sync. Use Save online or reconnect."); message += " Online backup failed: " + (error.message || error) + ". Your local audit is saved; retry Save online from Backup."; }
     alert(message);
     return audit;
   }
@@ -32023,7 +32143,8 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     event.stopImmediatePropagation();
     if (saving) return;
     saving = true;
-    Promise.resolve().then(saveDirect).catch(function(error){ alert("Save failed: " + (error && error.message ? error.message : error)); }).finally(function(){ saving = false; });
+    window.v219Store.status("Saving audit on this device…");
+    Promise.resolve().then(saveDirect).catch(function(error){ window.v219Store.status("Audit not saved — keep this page open and retry. " + (error.message || error)); alert("Save failed: " + (error && error.message ? error.message : error)); }).finally(function(){ saving = false; });
   }
   function install(){
     window.addEventListener("click", function(event){ if (event.target && (event.target.id === "v162LoadAudit" || event.target.id === "loadAudit")) lastSavedId = ""; }, true);
@@ -32315,8 +32436,9 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
 #v217HomeButton{
   position:fixed;
   right:14px;
-  bottom:14px;
-  z-index:9998;
+  top:calc(10px + env(safe-area-inset-top));
+  bottom:auto;
+  z-index:2147483600;
   border:0;
   border-radius:999px;
   background:#241152;
@@ -32328,9 +32450,10 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   font-size:15px;
   cursor:pointer;
 }
+body:not(.v187AuthLocked){padding-top:calc(72px + env(safe-area-inset-top))!important}
 #v217HomeButton:active{transform:translateY(1px)}
 @media (max-width:720px){
-  #v217HomeButton{left:auto;right:12px;bottom:12px;min-height:54px;padding:0 18px;font-size:16px}
+  #v217HomeButton{left:auto;right:12px;top:calc(8px + env(safe-area-inset-top));bottom:auto;min-height:48px;padding:0 18px;font-size:16px}
   body{padding-bottom:72px}
 }
 @media print{#v217HomeButton{display:none!important}}
@@ -32338,7 +32461,9 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
 <script id="v217-home-button">
 (function(){
   function showDashboard(){
+    if(document.body.classList.contains("v187AuthLocked")) return;
     try {
+      document.body.classList.remove("v196AuditActive", "v197ShowRoomTools");
       document.querySelectorAll(".panel").forEach(function(panel){ panel.classList.toggle("active", panel.id === "dashboard"); });
       document.querySelectorAll(".tabBtn[data-tab]").forEach(function(button){ button.classList.toggle("active", button.getAttribute("data-tab") === "dashboard"); });
       if (typeof renderDashboard === "function") renderDashboard();
@@ -32451,6 +32576,38 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
 })();
+</script>
+<script id="v219-sync-status">
+(function(){
+  var retrying=false;
+  function ready(){
+    var bar=document.createElement('div');bar.id='v219SyncStatus';bar.setAttribute('role','status');
+    bar.style.cssText='position:fixed;top:0;left:0;right:0;min-height:64px;padding:16px 110px 8px 12px;background:#fff;border-bottom:1px solid #ddd;z-index:2147483550;font-size:13px;color:#241152;padding-top:calc(16px + env(safe-area-inset-top))';
+    bar.textContent='Checking saved audits…';document.body.appendChild(bar);
+    var resume=document.createElement('button');resume.type='button';resume.textContent='Return to current audit';resume.id='v219ResumeAudit';
+    resume.addEventListener('click',function(){var tab=document.querySelector('.tabBtn[data-tab="newAudit"]');if(tab)tab.click();});
+    var dashboard=document.getElementById('dashboard');if(dashboard)dashboard.prepend(resume);
+    function showResume(){resume.hidden=typeof draftRows==='undefined'||!draftRows.length;}
+    document.addEventListener('click',function(){setTimeout(showResume,0);});showResume();
+    window.v219Store.ready.then(function(){
+      if(typeof renderHistory==='function')renderHistory();
+      if(typeof renderDashboard==='function')renderDashboard();
+    });
+  }
+  async function retry(){
+    if(retrying||document.body.classList.contains('v187AuthLocked')||!navigator.onLine)return;
+    retrying=true;
+    try{
+      if(await window.v219Store.read('pending-online')) await window.v187OnlineDatabase.save({silent:true});
+    }catch(e){window.v219Store.status('Saved on this device — waiting to sync. Use Save online or reconnect.');}
+    finally{retrying=false;}
+  }
+  window.addEventListener('online',retry);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)retry();});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready);else ready();
+})();
+
+
 </script>
 </body>
 </html>
