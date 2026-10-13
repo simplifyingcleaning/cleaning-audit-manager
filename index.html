@@ -12,7 +12,7 @@ window.v219CloudClient=(function(){
         var controller=new AbortController(),signal=init&&init.signal;
         var cancel=function(){controller.abort();};
         if(signal){if(signal.aborted)cancel();else signal.addEventListener('abort',cancel,{once:true});}
-        var timer=setTimeout(cancel,25000);
+        var timer=setTimeout(cancel,String(input).indexOf("/rest/v1/audit_backups")!==-1 ? 120000 : 25000);
         try{return await fetch(input,Object.assign({},init,{signal:controller.signal}));}
         finally{clearTimeout(timer);if(signal)signal.removeEventListener('abort',cancel);}
       }});
