@@ -26174,6 +26174,16 @@ body.v123PhotoFix input[data-photo]{
       });
       result[key] = Array.from(records.values());
     });
+    // Removal records retain the audit for Restore, and keep older devices from resurrecting it.
+    var removals=new Map();
+    [remote.auditRemovalLog||[],local.auditRemovalLog||[]].forEach(function(list){list.forEach(function(record){
+      var old=removals.get(String(record.id));
+      if(!old || (Date.parse(record.changedAt)||0)>(Date.parse(old.changedAt)||0))removals.set(String(record.id),copy(record));
+    });});
+    result.auditRemovalLog=Array.from(removals.values());
+    var removed=new Set(result.auditRemovalLog.filter(function(r){return r.removed;}).map(function(r){return String(r.id);}));
+    result.audits=result.audits.filter(function(a){return !removed.has(String(a.id));});
+    result.actions=result.actions.filter(function(a){return !removed.has(String(a.sourceAuditId));});
     return result;
   }
   function database(){
@@ -31235,7 +31245,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       var res = await sb.from("audit_backups").insert({user_id:user.id, backup_name:BACKUP_NAME, backup_data:payload});
       if (res.error) throw supabaseError(res.error, "Could not save online backup");
       var latestLocal = window.v219Store.merge(local, stateSafe());
-      var stillPending = JSON.stringify(latestLocal.audits) !== JSON.stringify(local.audits);
+      var stillPending = JSON.stringify(latestLocal.audits) !== JSON.stringify(local.audits) || JSON.stringify(latestLocal.auditRemovalLog || []) !== JSON.stringify(local.auditRemovalLog || []);
       await window.v219Store.persist(latestLocal, false);
       writeState(latestLocal);
       await window.v219Store.write("pending-online", stillPending).catch(function(){});
@@ -32607,6 +32617,112 @@ body:not(.v187AuthLocked){padding-top:calc(72px + env(safe-area-inset-top))!impo
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready);else ready();
 })();
 
+
+</script>
+<script id="v220-recoverable-audit-delete">
+/* Recoverable audit removal, persisted before rendering and carried through cloud merge. */
+(function(){
+  var busy=false;
+  function store(){return window.v219Store;}
+  function refresh(){
+    if(typeof renderAll==='function')renderAll();
+    if(typeof renderHistory==='function')renderHistory();
+    if(typeof renderDashboard==='function')renderDashboard();
+    if(typeof renderActions==='function')renderActions();
+    renderRemoved();
+  }
+  async function sync(){
+    try{
+      if(!window.v187OnlineDatabase || typeof window.v187OnlineDatabase.save!=='function')throw new Error('Online storage is not connected.');
+      await window.v187OnlineDatabase.save({silent:true});
+    }catch(error){store().status('Saved on this device — waiting to sync. Use Save online or reconnect.');}
+  }
+  function nextRevision(previous){
+    return new Date(Math.max(Date.now(),(Date.parse(previous&&previous.changedAt)||0)+1)).toISOString();
+  }
+  async function removeAudit(id){
+    if(busy)return;
+    await store().ready;
+    if(busy)return;
+    var audit=(state.audits||[]).find(function(a){return String(a.id)===String(id);});
+    if(!audit)return;
+    if(!confirm('Delete audit for '+audit.locationName+' dated '+audit.date+'? Its actions will also be removed. You can restore it from Deleted audits in History.'))return;
+    busy=true;
+    try{
+      var next=store().copy(state);
+      var previous=(next.auditRemovalLog||[]).find(function(r){return String(r.id)===String(id);});
+      var record={id:String(id),removed:true,changedAt:nextRevision(previous),audit:store().copy(audit),actions:next.actions.filter(function(a){return String(a.sourceAuditId)===String(id);})};
+      next.auditRemovalLog=(next.auditRemovalLog||[]).filter(function(r){return String(r.id)!==String(id);}).concat([record]);
+      next.audits=next.audits.filter(function(a){return String(a.id)!==String(id);});
+      next.actions=next.actions.filter(function(a){return String(a.sourceAuditId)!==String(id);});
+      store().status('Deleting audit on this device…');
+      await store().persist(next,false);
+      state=next;
+      await store().write('pending-online',true).catch(function(){});
+      refresh();
+      store().status('Audit deleted on this device. You can restore it in History. Sending online…');
+      // A cloud delay must not block another local operation.
+      sync();
+    }catch(error){store().status('Audit was not deleted: '+(error.message||error));alert('Audit was not deleted. '+(error.message||error));}
+    finally{busy=false;}
+  }
+  async function restoreAudit(id){
+    if(busy)return;
+    await store().ready;
+    if(busy)return;
+    var record=(state.auditRemovalLog||[]).find(function(r){return String(r.id)===String(id)&&r.removed;});
+    if(!record)return;
+    busy=true;
+    try{
+      var next=store().copy(state),restored=store().copy(record);
+      restored.removed=false;restored.changedAt=nextRevision(record);
+      restored.audit.updatedAt=restored.changedAt;
+      next.auditRemovalLog=next.auditRemovalLog.filter(function(r){return String(r.id)!==String(id);}).concat([restored]);
+      next.audits=next.audits.filter(function(a){return String(a.id)!==String(id);}).concat([restored.audit]);
+      next.actions=next.actions.filter(function(a){return String(a.sourceAuditId)!==String(id);}).concat(restored.actions||[]);
+      await store().persist(next,false);state=next;
+      await store().write('pending-online',true).catch(function(){});
+      refresh();store().status('Audit restored on this device. Sending online…');sync();
+    }catch(error){store().status('Audit could not be restored: '+(error.message||error));alert('Audit could not be restored. '+(error.message||error));}
+    finally{busy=false;}
+  }
+  function renderRemoved(){
+    var panel=document.getElementById('history');if(!panel)return;
+    var box=document.getElementById('v220DeletedAudits');
+    if(!box){box=document.createElement('section');box.id='v220DeletedAudits';box.className='card';box.style.marginTop='18px';panel.appendChild(box);}
+    box.replaceChildren();
+    var records=(state.auditRemovalLog||[]).filter(function(r){return r.removed&&r.audit;});
+    box.hidden=!records.length;
+    if(!records.length)return;
+    var title=document.createElement('h2');title.textContent='Deleted audits';box.appendChild(title);
+    var note=document.createElement('p');note.textContent='Restore an audit and the actions removed with it.';box.appendChild(note);
+    records.forEach(function(record){
+      var line=document.createElement('div');line.className='list';
+      var name=document.createElement('strong');name.textContent=record.audit.locationName+' — '+record.audit.date;line.appendChild(name);
+      var button=document.createElement('button');button.type='button';button.textContent='Restore audit';button.className='secondary small';button.style.marginLeft='12px';button.setAttribute('data-v220-restore',record.id);line.appendChild(button);box.appendChild(line);
+    });
+  }
+  function install(){
+    window.deleteAudit=removeAudit;
+    var oldRender=window.renderHistory;
+    if(oldRender&&!oldRender.__v220Restore){
+      var wrapped=function(){var result=oldRender.apply(this,arguments);renderRemoved();return result;};wrapped.__v220Restore=true;
+      window.renderHistory=wrapped;try{renderHistory=wrapped;}catch(e){}
+    }
+    renderRemoved();
+  }
+  // Capture the existing button IDs before old handlers call synchronous saveState.
+  window.addEventListener('click',function(event){
+    var button=event.target&&event.target.closest&&event.target.closest('[data-delete-v39],[data-delete-v38],[data-delete-audit],[data-v220-restore]');
+    if(!button)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    var restore=button.getAttribute('data-v220-restore');
+    var job=restore!==null?restoreAudit(restore):removeAudit(button.getAttribute('data-delete-v39')||button.getAttribute('data-delete-v38')||button.getAttribute('data-delete-audit'));
+    Promise.resolve(job).catch(function(error){store().status('Audit operation failed: '+(error.message||error));});
+  },true);
+  window.v220AuditRemoval={remove:removeAudit,restore:restoreAudit,render:renderRemoved};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
+})();
 
 </script>
 </body>
