@@ -1,6 +1,42 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script id="v221-report-opening-summary">
+/* A bounded first-page narrative, generated only from the report's saved findings. */
+(function(){
+  function clean(value){return String(value==null?'':value).replace(/\s+/g,' ').trim();}
+  function esc(value){return clean(value).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function brief(value,limit){var t=clean(value);return t.length>limit?t.slice(0,limit-1).replace(/\s+\S*$/,'')+'…':t;}
+    function date(value){var m=clean(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return brief(value,40)||'Not recorded';return Number(m[3])+' '+['January','February','March','April','May','June','July','August','September','October','November','December'][Number(m[2])-1]+' '+m[1];}
+  function model(audit,report){
+    audit=audit||{};report=report||{};
+    var rows=(audit.items||[]).filter(function(r){return r&&/^(Met|Partially met|Not met)$/.test(r.status);});
+    var counts={met:0,partial:0,notMet:0};rows.forEach(function(r){if(r.status==='Met')counts.met++;else if(r.status==='Partially met')counts.partial++;else if(r.status==='Not met')counts.notMet++;});
+    var byArea=new Map();rows.forEach(function(r){var area=clean(r.area)||'General';if(!byArea.has(area))byArea.set(area,[]);byArea.get(area).push(r);});
+    var good=Array.from(byArea.entries()).filter(function(pair){return pair[1].length&&pair[1].every(function(r){return r.status==='Met';});}).map(function(pair){return pair[0];});
+    var faults=rows.filter(function(r){return r.status==='Not met'||r.status==='Partially met';}).sort(function(a,b){return (a.status==='Not met'?0:1)-(b.status==='Not met'?0:1);});
+    var findings=faults.slice(0,4).map(function(r){var note=clean(r.observation);if(!note||/^standard (met|partially met|not met)/i.test(note))note=clean(r.element);return {area:brief(r.area||'General',45),status:r.status,text:brief(note,145)};});
+    var score=report.score===null?null:report.score!==undefined?report.score:audit.score;
+    var outcome=clean(report.result||audit.outcome)||'Not recorded';
+    var narrative=brief(audit.auditor||'The auditor',60)+' completed the audit on '+date(audit.date)+'. '+(rows.length?'The recorded checks cover '+byArea.size+' area'+(byArea.size===1?'':'s')+'. ':'No applicable checklist results were recorded. ');
+    if(faults.length)narrative+='The audit recorded '+counts.met+' checks as Met, '+counts.partial+' as Partially met and '+counts.notMet+' as Not met. The findings below identify the main areas needing attention.';
+    else if(rows.length)narrative+='All applicable recorded checks were Met, with no Partially met or Not met findings.';
+    var strengths=good.length?'All applicable recorded checks were Met in '+good.slice(0,3).map(function(area){return brief(area,45);}).join(', ')+(good.length>3?' and '+(good.length-3)+' other area'+(good.length-3===1?'':'s'):'')+'.':!rows.length?'No applicable check results were recorded.':counts.met?'Met checks were recorded alongside the improvement findings; the area breakdown follows in the detailed report.':'No checks were recorded as Met. The areas requiring attention are shown below and in the detailed report.';
+    var actions=Array.isArray(report.actions)?report.actions:[];
+    var follow=actions.length?actions.length+' corrective action'+(actions.length===1?' is':'s are')+' recorded. Complete the listed cleaning actions and re-check the affected elements; owners and target dates, where recorded, follow in the detailed report.':faults.length?'Corrective follow-up is needed for the recorded improvement findings. The detailed report shows the affected checks and any action notes.':'Continue the agreed cleaning routine and use the next audit to confirm the standard is maintained.';
+    var reviews=Array.isArray(audit.previousActionReviews)?audit.previousActionReviews:[];
+    var closed=reviews.filter(function(r){return /^(met|complete|completed|closed)$/i.test(clean(r.status));}).length;
+    return {site:brief(audit.locationName||'Cleaning audit',80),date:date(audit.date),auditor:brief(audit.auditor||'Not recorded',60),score:score,outcome:brief(outcome,70),narrative:narrative,strengths:strengths,findings:findings,remaining:Math.max(0,faults.length-findings.length),follow:follow,review:reviews.length?'Previous actions: '+closed+' completed; '+(reviews.length-closed)+' require further review or follow-up.':'',note:brief(audit.summary,430)};
+  }
+  function render(audit,report){
+    var m=model(audit,report);
+    return '<section class="page v221Summary" aria-label="Opening audit summary"><div class="v221Top"><div><div class="v221Eyebrow">Simplifying Cleaning · Audit summary</div><h1>'+esc(m.site)+'</h1><p>'+esc(m.date)+' · Auditor: '+esc(m.auditor)+'</p></div><div class="v221Result"><strong>'+(m.score===null||m.score===undefined?'N/A':esc(m.score)+'%')+'</strong><span>'+esc(m.outcome)+'</span></div></div><h2>How the audit went</h2><p>'+esc(m.narrative)+'</p><h2>What met the standard</h2><p>'+esc(m.strengths)+'</p><h2>Main findings</h2>'+(m.findings.length?'<ul>'+m.findings.map(function(f){return '<li><strong>'+esc(f.area)+' — '+esc(f.status)+':</strong> '+esc(f.text)+'</li>';}).join('')+'</ul>':'<p>No improvement findings were recorded.</p>')+(m.remaining?'<p class="v221Small">'+m.remaining+' further finding'+(m.remaining===1?' is':'s are')+' included in the detailed report.</p>':'')+'<h2>Follow-up</h2><p>'+esc(m.follow)+'</p>'+(m.review?'<p>'+esc(m.review)+'</p>':'')+(m.note?'<div class="v221Note"><h2>Auditor’s recorded summary</h2><p>'+esc(m.note)+'</p></div>':'')+'<footer>Summary of the areas and elements checked at the time of audit. The detailed results, actions and evidence follow.</footer></section>';
+  }
+  var css='.page.v221Summary{min-height:0!important;height:265mm;max-width:980px;padding:24px 30px;box-sizing:border-box;position:relative;break-after:page;page-break-after:always;overflow:visible;color:#172033;background:#fff}.v221Summary h1{font:700 28px/1.15 Arial,sans-serif;color:#241152;margin:8px 0}.v221Summary h2{font:700 16px/1.3 Arial,sans-serif;color:#241152;margin:17px 0 6px}.v221Summary p,.v221Summary li{font:14px/1.48 Arial,sans-serif;margin:0 0 8px}.v221Summary ul{padding-left:20px;margin:0}.v221Summary li{margin-bottom:9px}.v221Top{display:flex;justify-content:space-between;gap:20px;border-bottom:3px solid #14b8a6;padding-bottom:16px}.v221Eyebrow{font:700 11px/1.4 Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;color:#5a4777}.v221Result{flex:0 0 120px;align-self:flex-start;border-radius:12px;background:#f4f1fa;padding:14px;text-align:center}.v221Result strong{display:block;font:700 32px/1.1 Arial,sans-serif;color:#241152}.v221Result span{display:block;font:700 12px/1.4 Arial,sans-serif;margin-top:6px}.v221Summary .v221Small{font-size:12px;color:#596579}.v221Note{margin-top:16px;border-left:3px solid #14b8a6;padding-left:12px}.v221Summary footer{position:absolute;bottom:20px;left:30px;right:30px;font:11px/1.4 Arial,sans-serif;color:#667085;border-top:1px solid #dde3eb;padding-top:10px}@media print{.page.v221Summary{height:265mm;max-width:none;margin:0;box-shadow:none;padding:16px 20px}.v221Summary footer{left:20px;right:20px}}@media screen and (max-width:600px){.page.v221Summary{height:auto;min-height:0;padding:22px 18px 70px}.v221Summary h1{font-size:23px}.v221Result{flex-basis:85px;padding:10px}.v221Summary footer{left:18px;right:18px}}';
+  window.v221ReportSummary={model:model,render:render,css:css};
+})();
+
+</script>
 <script id="v219-shared-cloud-client">
 /* One auth session/client for all legacy panels; requests cannot wait forever. */
 window.v219CloudClient=(function(){
@@ -29,6 +65,8 @@ window.v219CloudClient=(function(){
 window.auditElementSuggestions = function(row) {
   var element = String(row.element || 'This element').trim();
   var value = element.toLowerCase();
+  if (/room dividers|movable partitions/i.test(element) && row.status !== 'Met' && row.status !== 'N/A') return {obs:['Dust or marks on room dividers'],act:['Clean the accessible room-divider and movable-partition surfaces']};
+  if (/fire extinguishers/i.test(element) && row.status !== 'Met' && row.status !== 'N/A') return {obs:['Dust on the fire-extinguisher exterior'],act:['Dust the accessible exterior of the fire extinguisher without disturbing safety equipment']};
   if (row.status === 'N/A') return {obs:['Not present at time of audit','Outside agreed cleaning scope'],act:['No action required']};
   if (!row.status || row.status === 'Met') return {obs:['Standard met at the time of audit.'],act:['No action required']};
   var options = [];
@@ -15197,8 +15235,8 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
 
       var logoHtml = getLogo() ? '<img class="logo" src="' + getLogo() + '">' : "";
 
-      var doc = '<!doctype html><html><head><title>Cleaning audit report - ' + esc(audit.locationName || "") + '</title><style>' + css() + '</style></head><body>' +
-        '<div class="page"><div class="cover"><div class="brand"><div><div class="eyebrow">Client cleaning audit report</div><h1>' + esc(audit.locationName || "Cleaning audit") + '</h1><div class="auditFor">Audit for: ' + esc(audit.locationName || "Client/site") + '</div></div>' + logoHtml + '</div>' +
+      var doc = '<!doctype html><html><head><title>Cleaning audit report - ' + esc(audit.locationName || "") + '</title><style>' + css() + (window.v221ReportSummary ? window.v221ReportSummary.css : '') + '</style></head><body>' +
+        (window.v221ReportSummary ? window.v221ReportSummary.render(Object.assign({},audit,{items:reportItems(audit)}),{score:calc.score,result:result,actions:actionRows}) : '') + '<div class="page"><div class="cover"><div class="brand"><div><div class="eyebrow">Client cleaning audit report</div><h1>' + esc(audit.locationName || "Cleaning audit") + '</h1><div class="auditFor">Audit for: ' + esc(audit.locationName || "Client/site") + '</div></div>' + logoHtml + '</div>' +
         '<div class="coverGrid"><div class="meta"><div><b>Audit date</b>' + esc(audit.date || "") + '</div><div><b>Auditor</b>' + esc(audit.auditor || "") + '</div><div><b>Audit type</b>' + (type === "dental" ? "Healthcare / Dental" : "Commercial") + '</div><div><b>Standard basis</b>' + (type === "dental" ? "NHS FR/star rating" : "BICSc-aligned") + '</div></div>' +
         '<div class="scoreHero"><div class="score">' + (calc.score === null ? "N/A" : calc.score + "%") + '</div><div class="label">' + esc(result) + '</div><div style="margin-top:8px">' + (type === "dental" ? "Functional-area targets and star ratings included" : "Commercial quality rating") + '</div></div></div></div>' +
         '<div class="grid three"><div class="card kpi"><h3>Overall score</h3><div class="big">' + (calc.score === null ? "N/A" : calc.score + "%") + '</div></div><div class="card kpi"><h3>Outcome</h3><div class="big" style="font-size:23px">' + esc(result) + '</div></div><div class="card kpi"><h3>Actions raised</h3><div class="big">' + acts.length + '</div></div></div>' +
@@ -25826,6 +25864,7 @@ body.v123PhotoFix input[data-photo]{
       if (!Array.isArray(draftRows) || !draftRows.length) return;
       var loc = selectedLocation();
       var type = loc && loc.type ? loc.type : "commercial";
+      if(!isHealthcareType(type) && window.__LOCKED_COMMERCIAL_ELEMENTS_V201) return;
       draftRows = canonicalRows(draftRows, type);
     } catch(e) {}
   }
@@ -25858,7 +25897,7 @@ body.v123PhotoFix input[data-photo]{
       try { audit = (state.audits || []).find(function(item){ return String(item.id) === String(id); }) || null; } catch(e) {}
       if (!audit || !Array.isArray(audit.items)) return previousOpenAuditReportV184.apply(this, arguments);
       var originalItems = audit.items;
-      audit.items = canonicalRows(originalItems, audit.locationType || "commercial");
+      audit.items = !isHealthcareType(audit.locationType || "commercial") && window.__LOCKED_COMMERCIAL_ELEMENTS_V201 ? originalItems : canonicalRows(originalItems, audit.locationType || "commercial");
       try {
         return previousOpenAuditReportV184.apply(this, arguments);
       } finally {
@@ -29413,122 +29452,132 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   var MET_OBSERVATION = "Standard met at the time of audit. The item was visibly clean and no corrective action was required.";
   var SAMPLE_NOTE = "This audit report is based on a representative sample of rooms, areas and cleaning elements checked at the time of the audit. It is not confirmation that every room, surface or item in the premises was checked.";
   var COMMERCIAL_ELEMENTS_V201 = {
-    entrance: [
-      "Entrance floor and matting clean, dry and free from visible soil, litter, dust build-up and staining",
-      "Entrance doors, door frames, push plates, handles and pull plates visibly clean",
-      "Entrance glass, door glazing, side panels and vision panels clean and smear-free",
-      "Reception/entrance signage, intercoms, access panels and touchpoints externally clean",
-      "Window ledges, low-level edges, skirting boards and corners free from dust and debris",
-      "Radiators, pipework, grilles and accessible fittings visibly clean",
-      "High-level corners, vents, ceiling edges and cobwebs removed where safely accessible",
-      "Entrance bins emptied where present; bin exterior clean, lined correctly and not overflowing"
+    "entrance": [
+        "Entrance floor and matting clean, dry and free from visible soil, litter, dust build-up and staining",
+        "Entrance doors, door frames, push plates, handles and pull plates visibly clean",
+        "Entrance glass, door glazing, side panels and vision panels clean and smear-free",
+        "Reception/entrance signage, intercoms, access panels and touchpoints externally clean",
+        "Window ledges, low-level edges, skirting boards and corners free from dust and debris",
+        "Radiators, pipework, grilles and accessible fittings visibly clean",
+        "High-level corners, vents, ceiling edges and cobwebs removed where safely accessible",
+        "Entrance bins emptied where present; bin exterior clean, lined correctly and not overflowing",
+        "Fire extinguishers externally clean and free from dust where present"
     ],
-    reception: [
-      "Reception floor and edges clean, dry and free from visible soil, dust build-up, litter and staining",
-      "Reception desk front, counter top, transaction ledge and public-facing surfaces visibly clean",
-      "Card machines, telephones, sign-in screens, pens and shared reception equipment externally clean where included",
-      "Reception chairs, chair arms, visitor tables and accessible furniture visibly clean",
-      "Doors, handles, push plates, switches and frequent hand-touch points clean",
-      "Internal glazing, partitions, screens, vision panels and window ledges clean and smear-free where included",
-      "Walls, ledges, skirting boards, corners and low-level edges visibly clean",
-      "Radiators, pipework, vents, accessible fittings and wall-mounted items visibly clean",
-      "High-level dust, ceiling edges, vents, corners and cobwebs removed where safely accessible",
-      "Reception bins emptied; bin exterior clean, lined correctly and not overflowing"
+    "reception": [
+        "Reception floor and edges clean, dry and free from visible soil, dust build-up, litter and staining",
+        "Reception desk front, counter top, transaction ledge and public-facing surfaces visibly clean",
+        "Card machines, telephones, sign-in screens, pens and shared reception equipment externally clean where included",
+        "Reception chairs, chair arms, visitor tables and accessible furniture visibly clean",
+        "Doors, handles, push plates, switches and frequent hand-touch points clean",
+        "Internal glazing, partitions, screens, vision panels and window ledges clean and smear-free where included",
+        "Walls, ledges, skirting boards, corners and low-level edges visibly clean",
+        "Radiators, pipework, vents, accessible fittings and wall-mounted items visibly clean",
+        "High-level dust, ceiling edges, vents, corners and cobwebs removed where safely accessible",
+        "Reception bins emptied; bin exterior clean, lined correctly and not overflowing",
+        "Fire extinguishers externally clean and free from dust where present"
     ],
-    office: [
-      "Office floor and edges clean, dry and free from visible soil, dust build-up, litter and staining",
-      "Desks, desk returns, accessible work surfaces and cable access points visibly clean where included",
-      "Keyboards, mouse, telephones, monitors and workstation touchpoints externally clean where included",
-      "Office chairs, chair arms, chair bases and accessible furniture visibly clean",
-      "Printers, scanners, photocopiers and shared office equipment externally clean where included",
-      "Cupboard fronts, filing cabinets, drawer fronts and storage tops visibly clean where accessible",
-      "Doors, handles, switches and frequent hand-touch points clean",
-      "Internal glazing, screens, partitions and window ledges clean and smear-free where included",
-      "Walls, ledges, skirting boards, corners, radiators and pipework visibly clean",
-      "Office bins emptied; bin exterior clean, lined correctly and not overflowing"
+    "office": [
+        "Office floor and edges clean, dry and free from visible soil, dust build-up, litter and staining",
+        "Desks, desk returns, accessible work surfaces and cable access points visibly clean where included",
+        "Keyboards, mouse, telephones, monitors and workstation touchpoints externally clean where included",
+        "Office chairs, chair arms, chair bases and accessible furniture visibly clean",
+        "Printers, scanners, photocopiers and shared office equipment externally clean where included",
+        "Cupboard fronts, filing cabinets, drawer fronts and storage tops visibly clean where accessible",
+        "Doors, handles, switches and frequent hand-touch points clean",
+        "Internal glazing, screens, partitions and window ledges clean and smear-free where included",
+        "Walls, ledges, skirting boards, corners, radiators and pipework visibly clean",
+        "Office bins emptied; bin exterior clean, lined correctly and not overflowing",
+        "Fire extinguishers externally clean and free from dust where present"
     ],
-    meeting: [
-      "Meeting room floor and edges clean, dry and free from visible soil, dust build-up, litter and staining",
-      "Meeting table top, table edges, cable ports and accessible shared surfaces visibly clean",
-      "Chairs, chair arms, chair bases and accessible furniture visibly clean",
-      "Screens, remotes, conference phones, control panels and shared equipment externally clean where included",
-      "Whiteboards, presentation boards, marker trays and noticeboards clean where present",
-      "Doors, handles, switches and frequent hand-touch points clean",
-      "Internal glazing, partitions, vision panels and window ledges clean and smear-free where included",
-      "Walls, ledges, skirting boards, corners, radiators and pipework visibly clean",
-      "High-level dust, vents, ceiling edges and cobwebs removed where safely accessible",
-      "Meeting room bins emptied; bin exterior clean, lined correctly and not overflowing"
+    "meeting": [
+        "Meeting room floor and edges clean, dry and free from visible soil, dust build-up, litter and staining",
+        "Meeting table top, table edges, cable ports and accessible shared surfaces visibly clean",
+        "Chairs, chair arms, chair bases and accessible furniture visibly clean",
+        "Screens, remotes, conference phones, control panels and shared equipment externally clean where included",
+        "Whiteboards, presentation boards, marker trays and noticeboards clean where present",
+        "Doors, handles, switches and frequent hand-touch points clean",
+        "Internal glazing, partitions, vision panels and window ledges clean and smear-free where included",
+        "Walls, ledges, skirting boards, corners, radiators and pipework visibly clean",
+        "High-level dust, vents, ceiling edges and cobwebs removed where safely accessible",
+        "Meeting room bins emptied; bin exterior clean, lined correctly and not overflowing",
+        "Fire extinguishers externally clean and free from dust where present",
+        "Room dividers and movable partitions visibly clean where present"
     ],
-    kitchen: [
-      "Kitchen or breakout floor and edges clean, dry and free from visible soil, crumbs, spills and staining",
-      "Worktops, counters, breakfast bars and shared food preparation surfaces visibly clean",
-      "Tables, chairs, chair arms and shared seating areas visibly clean",
-      "Sink, taps, drainer, basin and splashback clean with no food residue or water marks",
-      "Cupboard fronts, drawer fronts, handles and accessible storage fronts visibly clean",
-      "Fridge, microwave, kettle, toaster and small appliance exteriors clean where included",
-      "External appliance handles, buttons and touchpoints clean where included",
-      "Doors, handles, switches and frequent hand-touch points clean",
-      "Walls, ledges, skirting boards, corners, radiators and pipework visibly clean",
-      "Kitchen bins emptied; bin exterior clean, lined correctly and not overflowing"
+    "kitchen": [
+        "Kitchen or breakout floor and edges clean, dry and free from visible soil, crumbs, spills and staining",
+        "Worktops, counters, breakfast bars and shared food preparation surfaces visibly clean",
+        "Tables, chairs, chair arms and shared seating areas visibly clean",
+        "Sink, taps, drainer, basin and splashback clean with no food residue or water marks",
+        "Cupboard fronts, drawer fronts, handles and accessible storage fronts visibly clean",
+        "Fridge, microwave, kettle, toaster and small appliance exteriors clean where included",
+        "External appliance handles, buttons and touchpoints clean where included",
+        "Doors, handles, switches and frequent hand-touch points clean",
+        "Walls, ledges, skirting boards, corners, radiators and pipework visibly clean",
+        "Kitchen bins emptied; bin exterior clean, lined correctly and not overflowing",
+        "Fire extinguishers externally clean and free from dust where present"
     ],
-    toilet: [
-      "Washroom floor, edges and corners clean, dry and free from visible soil, dust build-up, staining and debris",
-      "Toilet pan, seat, lid, hinges, flush control and surrounding sanitary area clean",
-      "Urinals, cubicle partitions, modesty panels and sanitary fittings clean where present",
-      "Sink, taps, basin, overflow, vanity unit and splashback clean with no residue or water marks",
-      "Mirror clean and smear-free",
-      "Soap, towel, toilet roll and sanitary dispensers externally clean and stocked where included",
-      "Hand dryer casing, air outlet and surrounding wall area clean where present",
-      "Cubicle doors, locks, handles, switches and frequent hand-touch points clean",
-      "Walls, ledges, skirting boards, pipework, radiators and accessible fittings visibly clean",
-      "Waste and sanitary bins emptied where required; bin exterior clean, lined correctly and not overflowing"
+    "toilet": [
+        "Washroom floor, edges and corners clean, dry and free from visible soil, dust build-up, staining and debris",
+        "Toilet pan, seat, lid, hinges, flush control and surrounding sanitary area clean",
+        "Urinals, cubicle partitions, modesty panels and sanitary fittings clean where present",
+        "Sink, taps, basin, overflow, vanity unit and splashback clean with no residue or water marks",
+        "Mirror clean and smear-free",
+        "Soap, towel, toilet roll and sanitary dispensers externally clean and stocked where included",
+        "Hand dryer casing, air outlet and surrounding wall area clean where present",
+        "Cubicle doors, locks, handles, switches and frequent hand-touch points clean",
+        "Walls, ledges, skirting boards, pipework, radiators and accessible fittings visibly clean",
+        "Waste and sanitary bins emptied where required; bin exterior clean, lined correctly and not overflowing",
+        "Fire extinguishers externally clean and free from dust where present"
     ],
-    corridor: [
-      "Corridor floor and edges clean, dry and free from visible soil, dust build-up, litter and staining",
-      "Doors, handles, push plates, switches, keypads and corridor touchpoints clean",
-      "Handrails, wall protection rails and grab points visibly clean where present",
-      "Internal glazing, vision panels, partitions and window ledges clean and smear-free where included",
-      "Walls, ledges, skirting boards, corners and low-level edges visibly clean",
-      "Radiators, pipework, grilles, signage and wall-mounted items visibly clean",
-      "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
-      "Corridor bins emptied where present; bin exterior clean, lined correctly and not overflowing",
-      "Corridor clear of cleaning-related obstruction, trailing items or avoidable slip/trip hazards"
+    "corridor": [
+        "Corridor floor and edges clean, dry and free from visible soil, dust build-up, litter and staining",
+        "Doors, handles, push plates, switches, keypads and corridor touchpoints clean",
+        "Handrails, wall protection rails and grab points visibly clean where present",
+        "Internal glazing, vision panels, partitions and window ledges clean and smear-free where included",
+        "Walls, ledges, skirting boards, corners and low-level edges visibly clean",
+        "Radiators, pipework, grilles, signage and wall-mounted items visibly clean",
+        "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
+        "Corridor bins emptied where present; bin exterior clean, lined correctly and not overflowing",
+        "Corridor clear of cleaning-related obstruction, trailing items or avoidable slip/trip hazards",
+        "Fire extinguishers externally clean and free from dust where present"
     ],
-    stairs: [
-      "Stairs, landings, nosings and floor edges clean, dry and free from visible soil, dust build-up, litter and staining",
-      "Handrails, banisters and grab points clean along the full accessible length",
-      "Stair doors, handles, push plates, switches and frequent touchpoints clean",
-      "Stair glazing, vision panels and window ledges clean and smear-free where included",
-      "Walls, ledges, skirting boards, corners and low-level edges visibly clean",
-      "Radiators, pipework, grilles, signage and wall-mounted items visibly clean",
-      "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
-      "Stairs and landings clear of cleaning-related obstruction or avoidable slip/trip hazards"
+    "stairs": [
+        "Stairs, landings, nosings and floor edges clean, dry and free from visible soil, dust build-up, litter and staining",
+        "Handrails, banisters and grab points clean along the full accessible length",
+        "Stair doors, handles, push plates, switches and frequent touchpoints clean",
+        "Stair glazing, vision panels and window ledges clean and smear-free where included",
+        "Walls, ledges, skirting boards, corners and low-level edges visibly clean",
+        "Radiators, pipework, grilles, signage and wall-mounted items visibly clean",
+        "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
+        "Stairs and landings clear of cleaning-related obstruction or avoidable slip/trip hazards",
+        "Fire extinguishers externally clean and free from dust where present"
     ],
-    cleaning: [
-      "Cleaning cupboard/store floor and edges clean, dry and free from visible soil, dust build-up and debris",
-      "Cleaning equipment clean, serviceable and stored tidily after use",
-      "Mops, buckets, cloths and colour-coded equipment separated and stored correctly",
-      "COSHH products labelled, closed, secure and stored away from inappropriate items",
-      "Mop sink, slop hopper, sink, taps and splashback clean where present",
-      "Shelving, storage fronts, doors, handles and switches visibly clean",
-      "Walls, ledges, skirting boards, corners, radiators and pipework visibly clean",
-      "High-level dust, vents, ceiling edges and cobwebs removed where safely accessible",
-      "Cleaning store waste emptied where present; bin exterior clean, lined correctly and not overflowing",
-      "Store clear of avoidable access hazards, leaks, spills or unsafe storage"
+    "cleaning": [
+        "Cleaning cupboard/store floor and edges clean, dry and free from visible soil, dust build-up and debris",
+        "Cleaning equipment clean, serviceable and stored tidily after use",
+        "Mops, buckets, cloths and colour-coded equipment separated and stored correctly",
+        "COSHH products labelled, closed, secure and stored away from inappropriate items",
+        "Mop sink, slop hopper, sink, taps and splashback clean where present",
+        "Shelving, storage fronts, doors, handles and switches visibly clean",
+        "Walls, ledges, skirting boards, corners, radiators and pipework visibly clean",
+        "High-level dust, vents, ceiling edges and cobwebs removed where safely accessible",
+        "Cleaning store waste emptied where present; bin exterior clean, lined correctly and not overflowing",
+        "Store clear of avoidable access hazards, leaks, spills or unsafe storage",
+        "Fire extinguishers externally clean and free from dust where present"
     ],
-    general: [
-      "Floor and edges clean, dry and free from visible soil, dust build-up, litter and staining",
-      "Accessible furniture, counters, fixtures and horizontal surfaces visibly clean",
-      "Shared equipment and frequent touchpoints externally clean where included",
-      "Doors, handles, switches, push plates and contact points clean",
-      "Internal glazing, screens, vision panels and window ledges clean and smear-free where included",
-      "Walls, ledges, skirting boards, corners and low-level edges visibly clean",
-      "Radiators, pipework, grilles, signage and wall-mounted items visibly clean",
-      "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
-      "Waste emptied where present; bin exterior clean, lined correctly and not overflowing"
+    "general": [
+        "Floor and edges clean, dry and free from visible soil, dust build-up, litter and staining",
+        "Accessible furniture, counters, fixtures and horizontal surfaces visibly clean",
+        "Shared equipment and frequent touchpoints externally clean where included",
+        "Doors, handles, switches, push plates and contact points clean",
+        "Internal glazing, screens, vision panels and window ledges clean and smear-free where included",
+        "Walls, ledges, skirting boards, corners and low-level edges visibly clean",
+        "Radiators, pipework, grilles, signage and wall-mounted items visibly clean",
+        "High-level dust, vents, ceiling edges, corners and cobwebs removed where safely accessible",
+        "Waste emptied where present; bin exterior clean, lined correctly and not overflowing",
+        "Fire extinguishers externally clean and free from dust where present"
     ]
-  };
-
+};
   function text(value){ return String(value === null || value === undefined ? "" : value).trim(); }
   function esc(value){ return text(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
   function norm(value){ return text(value).toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim(); }
@@ -29556,6 +29605,8 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   }
   function elementKey(element){
     var value = norm(element);
+    if (/fire extinguisher/.test(value)) return "fire-extinguisher";
+    if (/room divider|movable partition/.test(value)) return "room-divider";
     if (/floor|matting|nosing|landing/.test(value) && !/handrail|banister/.test(value)) return "floor";
     if (/handrail|banister|grab point/.test(value)) return "handrail";
     if (/waste|bin|liner|overflowing|sanitary/.test(value)) return "waste";
@@ -29606,7 +29657,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     matches = matches || [];
     var observations = mergeList(matches, "observationsV34");
     var actions = mergeList(matches, "actionsV34");
-    var status = matches.length ? bestStatus(matches) : "Met";
+    var status = matches.length ? (matches.every(function(row){return row.status === "N/A";}) ? "N/A" : bestStatus(matches)) : (/^(Fire extinguishers|Room dividers)/.test(element) ? "N/A" : "Met");
     return {
       id: matches[0] && matches[0].id ? matches[0].id : uid("row"),
       area: area,
@@ -29623,7 +29674,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       areaNote: matches.map(function(row){ return text(row.areaNote); }).filter(Boolean)[0] || ""
     };
   }
-  function canonicalCommercialRows(list, location){
+  function canonicalCommercialRows(list, location, includeNewChecks){
     list = Array.isArray(list) ? list : [];
     var areas = [];
     list.forEach(function(row){ if (row && row.area && !areas.some(function(area){ return norm(area) === norm(row.area); })) areas.push(row.area); });
@@ -29635,6 +29686,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     areas.forEach(function(area){
       var areaRows = list.filter(function(row){ return norm(row.area) === norm(area); });
       commercialElements(area).forEach(function(element){
+        if(includeNewChecks===false && /^(Fire extinguishers|Room dividers)/.test(element) && !areaRows.some(function(row){return norm(row.element)===norm(element);})) return;
         var key = elementKey(element);
         out.push(makeRow(area, element, (areaRows.some(function(row){ return norm(row.element) === norm(element); }) ? areaRows.filter(function(row){ return norm(row.element) === norm(element); }) : areaRows.filter(function(row){ return elementKey(row.element) === key; }))));
       });
@@ -29758,7 +29810,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
         note.id = "v201SampleScopeNote";
         note.style.cssText = "border:1px solid #bfdbfe;background:#eff6ff;border-radius:10px;padding:10px;margin:12px 0;color:#1e3a8a;font-size:13px;line-height:1.4";
         note.innerHTML = "<strong>Audit scope note:</strong> " + esc(SAMPLE_NOTE);
-        var first = doc.querySelector(".cover,.reportKpiStrip,.reportCardPremium,.card,.page");
+        var first = doc.querySelector(".cover,.reportKpiStrip,.reportCardPremium,.card,.page:not(.v221Summary)");
         if (first && first.parentNode) first.parentNode.insertBefore(note, first.nextSibling);
         else doc.body.insertBefore(note, doc.body.firstChild);
         var audit = (stateSafe().audits || []).find(function(item){ return String(item.id) === String(auditId); });
@@ -29839,7 +29891,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     (stateSafe().audits || []).forEach(function(audit){
       if (!audit || isHealthcareType(audit.locationType) || !Array.isArray(audit.items)) return;
       var loc = (stateSafe().locations || []).find(function(location){ return String(location.id) === String(audit.locationId); }) || null;
-      var fixed = canonicalCommercialRows(audit.items, loc);
+      var fixed = canonicalCommercialRows(audit.items, loc, false);
       var before = JSON.stringify((audit.items || []).map(function(row){ return [row.area,row.element,row.status]; }));
       var after = JSON.stringify((fixed || []).map(function(row){ return [row.area,row.element,row.status]; }));
       if (before !== after) {
