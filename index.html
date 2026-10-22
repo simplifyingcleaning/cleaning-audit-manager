@@ -31227,9 +31227,18 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   function openDb(name, create){
     return new Promise(function(resolve, reject){
       if (!window.indexedDB) return reject(new Error("Photo storage is not available on this device."));
-      var req = indexedDB.open(name, 1);
+      var req = indexedDB.open(name);
       req.onupgradeneeded = function(){ var db = req.result; if (create && !db.objectStoreNames.contains("photos")) db.createObjectStore("photos", {keyPath:"id"}); };
-      req.onsuccess = function(){ var db = req.result; if (!db.objectStoreNames.contains("photos")) { db.close(); resolve(null); return; } resolve(db); };
+      req.onsuccess = function(){ var db = req.result; if (!db.objectStoreNames.contains("photos")) {
+        var nextVersion = db.version + 1; db.close();
+        if (!create) { resolve(null); return; }
+        var upgrade = indexedDB.open(name, nextVersion);
+        upgrade.onupgradeneeded = function(){var upgraded=upgrade.result;if(!upgraded.objectStoreNames.contains('photos'))upgraded.createObjectStore('photos',{keyPath:'id'});};
+        upgrade.onsuccess = function(){resolve(upgrade.result);};
+        upgrade.onerror = function(){reject(upgrade.error || new Error('Could not prepare photo storage.'));};
+        upgrade.onblocked = function(){reject(new Error('Photo storage is open in another tab. Close the other audit tab and retry.'));};
+        return;
+      } resolve(db); };
       req.onerror = function(){ reject(req.error || new Error("Could not open photo storage.")); };
     });
   }
