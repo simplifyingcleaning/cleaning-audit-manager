@@ -31145,6 +31145,68 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
 })();
 </script>
 
+<script id="v222-small-online-photo-batches">
+(function(){
+  'use strict';
+  var cache = new Map();
+  function fail(error, fallback){return new Error(error && error.message || fallback);}
+  async function hydrate(sb, backup, id){
+    if(!backup) return null;
+    var archive=Object.assign({},backup.photoArchive || {});
+    var sources=backup.photoArchiveSources || {};
+    var ids=Array.from(new Set(Object.keys(sources).map(function(k){return sources[k].id;})));
+    for(var i=0;i<ids.length;i++){
+      var sourceId=ids[i];
+      if(!sourceId || sourceId===id) throw new Error('Invalid online photo source.');
+      if(!cache.has(sourceId)){
+        var res=await sb.from('audit_backups').select('backup_data').eq('id',sourceId).single();
+        if(res.error || !res.data) throw fail(res.error,'Could not read saved photo batch.');
+        cache.set(sourceId,res.data.backup_data.photoArchive || {});
+      }
+      var data=cache.get(sourceId);
+      Object.keys(sources).forEach(function(key){
+        var pointer=sources[key];
+        if(pointer.id!==sourceId)return;
+        if(typeof data[pointer.key]!=='string')throw new Error('Saved photo batch is incomplete.');
+        archive[key]=data[pointer.key];
+      });
+    }
+    var out=Object.assign({},backup,{photoArchive:archive});
+    Object.defineProperty(out,'archiveRecordId',{value:id,enumerable:false});
+    return out;
+  }
+  async function pack(sb,userId,existing,archive,onProgress){
+    var sources={}, pending=[], byData=new Map();
+    Object.keys(existing && existing.photoArchive || {}).forEach(function(key){
+      var p=existing.photoArchiveSources && existing.photoArchiveSources[key];
+      if(!p && existing.archiveRecordId)p={id:existing.archiveRecordId,key:key};
+      if(p)byData.set(existing.photoArchive[key],p);
+    });
+    Object.keys(archive).forEach(function(key){
+      var old=byData.get(archive[key]);
+      if(old)sources[key]=old;else pending.push(key);
+    });
+    var batches=[], batch={}, bytes=0;
+    pending.forEach(function(key){
+      var size=JSON.stringify(key).length+JSON.stringify(archive[key]).length+2;
+      if(bytes && bytes+size>450000){batches.push(batch);batch={};bytes=0;}
+      batch[key]=archive[key];bytes+=size;
+    });
+    if(bytes)batches.push(batch);
+    for(var i=0;i<batches.length;i++){
+      if(onProgress)onProgress('Saving new photo batch '+(i+1)+' of '+batches.length+'...');
+      var photos=batches[i];
+      var res=await sb.from('audit_backups').insert({user_id:userId,backup_name:'audit_photo_batch_v222',backup_data:{app_version:'v222-photo-batch',photoArchive:photos}}).select('id').single();
+      if(res.error || !res.data || !res.data.id)throw fail(res.error,'Could not save photo batch. Audit snapshot was not committed.');
+      var id=res.data.id;cache.set(id,photos);
+      Object.keys(photos).forEach(function(key){sources[key]={id:id,key:key};});
+    }
+    return {photoArchive:{},photoArchiveSources:sources};
+  }
+  window.v222PhotoBatches={hydrate:hydrate,pack:pack};
+})();
+
+</script>
 <script id="v208-multi-store-report-photo-fix">
 (function(){
   var DB_NAMES = ["simplifying_cleaning_photo_store_v145", "simplifying_cleaning_photo_store_v1", "simplifying_cleaning_photo_store_v162"];
@@ -31213,7 +31275,14 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
         var row = audit.items[i];
         for (var p = 0; p < ((row && row.photos) || []).length; p++) {
           var photo = text(row.photos[p]);
-          if (/^data:image\//i.test(photo)) archive["inline:" + a + ":" + i + ":" + p] = photo;
+          if (/^data:image\//i.test(photo)) {
+            var digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(photo));
+            var hash = Array.from(new Uint8Array(digest)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+            var stableRef = 'idbphoto:inline_' + hash;
+            await writePhoto(photo, {auditId:audit.id, rowId:row.id}, stableRef);
+            row.photos[p] = stableRef;
+            archive[stableRef] = photo;
+          }
           else if (photo.indexOf(PHOTO_PREFIX) === 0 && !archive[photo]) {
             var data = await readPhoto(photo);
             if (data) archive[photo] = data; else missing++;
@@ -31268,7 +31337,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     if (!meta.data || !meta.data.length) return null;
     var row = await sb.from("audit_backups").select("backup_data,created_at,backup_name").eq("id", meta.data[0].id).single();
     if (row.error) throw supabaseError(row.error, "Could not load online backup");
-    return row.data ? row.data.backup_data : null;
+    return row.data ? await window.v222PhotoBatches.hydrate(sb, row.data.backup_data, meta.data[0].id) : null;
   }
   function writeState(next){
     try { state = next || {}; } catch(e) {}
@@ -31293,7 +31362,8 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       built.archive = Object.assign({}, existing && existing.photoArchive || {}, built.archive);
       var photoCount = Object.keys(built.archive).length;
       setStatus("Saving online: found " + photoCount + " photo(s), missing " + built.missing + " old reference(s)...");
-      var payload = {saved_at:new Date().toISOString(), app_version:"v219-durable-mobile-sync", state:local, photoArchive:built.archive, photoArchiveCount:photoCount, missingPhotoRefs:built.missing};
+      var packed = await window.v222PhotoBatches.pack(sb, user.id, existing, built.archive, setStatus);
+      var payload = {saved_at:new Date().toISOString(), app_version:"v222-small-online-photo-batches", state:local, photoArchive:packed.photoArchive, photoArchiveSources:packed.photoArchiveSources, photoArchiveCount:photoCount, missingPhotoRefs:built.missing};
       var res = await sb.from("audit_backups").insert({user_id:user.id, backup_name:BACKUP_NAME, backup_data:payload});
       if (res.error) throw supabaseError(res.error, "Could not save online backup");
       var latestLocal = window.v219Store.merge(local, stateSafe());
@@ -31870,7 +31940,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       var meta = await sb.from("audit_backups").select("id,backup_name,created_at").in("backup_name", BACKUP_NAMES).order("created_at", {ascending:false}).limit(1);
       if (meta.error || !meta.data || !meta.data.length) return {};
       var row = await sb.from("audit_backups").select("backup_data").eq("id", meta.data[0].id).single();
-      var backup = row && row.data ? row.data.backup_data : null;
+      var backup = row && row.data ? await window.v222PhotoBatches.hydrate(sb, row.data.backup_data, meta.data[0].id) : null;
       var archive = backup && backup.photoArchive && typeof backup.photoArchive === "object" ? backup.photoArchive : {};
       if (Object.keys(archive).length) saveArchive(archive);
       return archive;
