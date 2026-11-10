@@ -2,6 +2,18 @@
 <!-- Deployment refresh: online-save repair, 23 October 2026. -->
 <html lang="en">
 <head>
+<script id="v223-history-routes">
+window.addEventListener('click',function(e){
+ var b=e.target.closest && e.target.closest('[data-report],[data-report-v38],[data-report-v39],[data-pdf-v38],[data-pdf-v39],[data-export-pdf],[data-edit-v39],[data-edit-audit-v38],[data-edit-audit-v37],[data-edit-audit-v36],[data-edit-audit-v46]');
+ if(!b||!b.closest('#historyList'))return;
+ var d=b.dataset, edit=d.editV39||d.editAuditV38||d.editAuditV37||d.editAuditV36||d.editAuditV46;
+ var id=edit||d.report||d.reportV38||d.reportV39||d.pdfV38||d.pdfV39||d.exportPdf;
+ if(!id)return; e.preventDefault();e.stopImmediatePropagation();
+ if(edit){if(window.v177AuditWorkflow)return window.v177AuditWorkflow.loadAuditForEdit(id);}
+ else if(window.v223SavedReport)return window.v223SavedReport(id);
+ alert('The audit system is still loading. Please try again.');
+},true);
+</script>
 <script id="v221-report-opening-summary">
 /* A bounded first-page narrative, generated only from the report's saved findings. */
 (function(){
@@ -17227,9 +17239,9 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
     return ' src="' + esc(value) + '"';
   }
 
-  function openReport(id){
+  function openReport(id, snapshot){
     try {
-      var audit = getAudit(id);
+      var audit = snapshot || getAudit(id);
       if (!audit) return alert("Audit not found.");
 
       var type = audit.locationType || "commercial";
@@ -17238,13 +17250,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
       var actionRows = actions(audit);
       var result = outcome(calc, type);
 
-      audit.score = calc.score;
-      audit.outcome = result;
-      audit.nhsScoringV68At = new Date().toISOString();
-
-      try {
-        if (typeof saveState === "function") saveState();
-      } catch(e) {}
+      audit = Object.assign({}, audit, {score:calc.score,outcome:result});
 
       var photos = [];
       reportItems(audit).forEach(function(row){
@@ -17337,6 +17343,7 @@ body{background:linear-gradient(180deg,#f7f9ff 0%,#eef3fb 100%)}
   }
 
   function install(){
+    window.v223RenderSavedReport = openReport;
     window.openAuditReport = openReport;
     try { openAuditReport = window.openAuditReport; } catch(e) {}
 
@@ -24609,19 +24616,22 @@ body.v123PhotoFix input[data-photo]{
     var s = getState();
     var audit = (s.audits || []).find(function(item){ return String(item.id) === String(id); });
     if (!audit) return alert("Audit not found.");
+    var tab = document.querySelector('[data-tab="newAudit"],[data-tab="audit"]');
+    if (tab) tab.click();
     editingAuditId = audit.id;
     var loc = (s.locations || []).find(function(location){ return String(location.id) === String(audit.locationId); });
     if (E("v162Location")) {
       E("v162Location").value = audit.locationId;
-      E("v162Location").dispatchEvent(new Event("change", { bubbles:true }));
+
     }
     if (E("v162Date")) E("v162Date").value = audit.date || today();
     if (E("v162Auditor")) E("v162Auditor").value = audit.auditor || "";
     if (E("v162Summary")) E("v162Summary").value = audit.summary || "";
+    if (E("auditLocation")) E("auditLocation").value = audit.locationId;
+    if (typeof draftActions !== "undefined") draftActions = clone(audit.auditActions || []);
     setRows(clone(audit.items || []));
     refreshUi();
-    var tab = document.querySelector('[data-tab="newAudit"],[data-tab="audit"]');
-    if (tab) tab.click();
+
     setTimeout(refreshLayout, 50);
   }
 
@@ -24698,6 +24708,14 @@ body.v123PhotoFix input[data-photo]{
 
   function refreshLayout(){
     workflowBar();
+    var host=E("newAudit"), notice=E("v223EditingNotice");
+    if(host && editingAuditId){
+      if(!notice){notice=document.createElement("div");notice.id="v223EditingNotice";notice.style.cssText="padding:12px 16px;background:#f3effa;border-left:4px solid #5e3893;border-radius:8px;margin:10px 0;font-weight:700";host.prepend(notice);}
+      var saved=(getState().audits||[]).find(a=>String(a.id)===String(editingAuditId));
+      var label="Editing saved audit: "+(saved?saved.locationName+" | "+saved.date:"")+" — Save updates this history entry.";
+      if(notice.textContent!==label)notice.textContent=label;
+    }else if(notice)notice.remove();
+    var editorHeading=document.querySelector("#v162CreateAuditCard h2"); if(editorHeading) editorHeading.textContent=editingAuditId ? "Edit saved audit" : "Create audit";
     var oldSave = E("saveAudit");
     if (oldSave) {
       oldSave.id = "saveAuditLegacyV177";
@@ -32042,8 +32060,9 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
   }
   function wrapReport(){
     if (!window.openAuditReport || window.openAuditReport.__v213RealPhotoData) return;
-    var previous = window.openAuditReport;
+    var previous = window.v223RenderSavedReport; if (!previous) return;
     window.openAuditReport = function(id){
+      window.__v201LastReportAuditId=id;
       var reportWin = window.open("", "_blank");
       if (!reportWin) return alert("Report popup was blocked. Please allow popups for this site.");
       writeLoading(reportWin);
@@ -32054,6 +32073,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
         try {
           audit = typeof state !== "undefined" && state && Array.isArray(state.audits) ? state.audits.find(function(a){ return a.id === id; }) : null;
           if (!audit) throw new Error("Audit not found.");
+          audit = JSON.parse(JSON.stringify(audit));
           var archive = getArchive();
           var latest = await fetchLatestArchive();
           Object.keys(latest).forEach(function(key){ archive[key] = latest[key]; });
@@ -32076,9 +32096,9 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
           }
           var nativeOpen = window.open;
           window.open = function(){ return reportWin; };
-          try { previous.call(window, id); }
+          try { previous.call(window, id, audit); }
           finally { window.open = nativeOpen; }
-          if (!resolvedCount) {
+          if (originals.length && !resolvedCount) {
             try {
               var note = reportWin.document.createElement("div");
               note.style.cssText = "position:fixed;left:16px;right:16px;bottom:16px;z-index:99999;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;padding:10px;font:13px Arial";
@@ -32098,6 +32118,7 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       })();
       return false;
     };
+    window.v223SavedReport = window.openAuditReport;
     window.openAuditReport.__v213RealPhotoData = true;
     try { openAuditReport = window.openAuditReport; } catch(e) {}
   }
@@ -32211,14 +32232,18 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
     try { if (typeof renderAll === "function") renderAll(); } catch(e) {}
   }
   async function saveDirect(){
-    var loc = currentLocation();
+    var editKey = editingId();
+    var original = editKey && (stateSafe().audits || []).find(a=>String(a.id)===String(editKey));
+    if(editKey && !original) throw new Error("The selected audit is no longer in history. Reopen History before saving.");
+    var loc = original ? (stateSafe().locations || []).find(l=>String(l.id)===String(original.locationId)) : currentLocation();
     if (!loc) { alert("Select and load a location before saving."); return; }
+    if(original && E("v162Location") && String(E("v162Location").value)!==String(original.locationId))throw new Error("The location has changed. Reopen the saved audit from History before updating it.");
     var list = currentRows();
     if (!list.length) { alert("Load an audit before saving."); return; }
     var s = clone(stateSafe());
     var score = scoreRows(list, loc.type || loc.locationType || "commercial");
     var draftKey = String(loc.id) + "|" + auditDate();
-    var id = editingId() || (lastSavedKey === draftKey ? lastSavedId : "") || uid("audit");
+    var id = editKey || (lastSavedKey === draftKey ? lastSavedId : "") || uid("audit");
     var audit = {
       id:id,
       locationId:loc.id,
@@ -32245,7 +32270,12 @@ body.v195ShowRooms #newAudit #v162AuditTools #v191SaveAudit{
       s.audits[idx] = audit;
     }
     else s.audits.unshift(audit);
-    s.actions = (s.actions || []).filter(function(action){ return String(action.sourceAuditId) !== String(id); }).concat(actionRows(audit, list));
+    var oldActions=(s.actions||[]).filter(a=>String(a.sourceAuditId)===String(id));
+    var nextActions=actionRows(audit,list).map(a=>{
+      var i=oldActions.findIndex(o=>o.id===a.id || (o.area===a.area && o.text===a.text && (!o.element || !a.element || o.element===a.element)));
+      if(i<0)return a;var o=oldActions.splice(i,1)[0];return Object.assign({},o,a,{id:o.id,status:o.status,raisedDate:o.raisedDate,reviewDate:o.reviewDate,reviewNotes:o.reviewNotes});
+    });
+    s.actions = (s.actions || []).filter(a=>String(a.sourceAuditId)!==String(id)).concat(nextActions);
     await persistState(s);
     state = s;
     if (window.v177AuditWorkflow && window.v177AuditWorkflow.finishEdit) window.v177AuditWorkflow.finishEdit();
