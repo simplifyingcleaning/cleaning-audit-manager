@@ -1970,7 +1970,22 @@ body{background:radial-gradient(circle at top left,#f1eaff 0,#f7f9fd 34%,#f4f7fb
 .clientIntro{font-size:15px;line-height:1.55;color:#374151}
 @media(max-width:800px){.kpiGrid,.miniChartGrid{grid-template-columns:1fr}.reportPhotoGrid{grid-template-columns:1fr 1fr}}
 
-</style></head><body>${body}<script>window.onload=function(){window.print();};</` + `script></body></html>`;
+</style></head><body>${body}<script>window.onload=function(){window.print();};</` + `script><style id="v225-legacy-element-labels">
+/* Legacy room navigation renders the checklist label as a direct .help child. */
+body #newAudit .v162AuditCard[data-row-id] > .help,
+body #newAudit .v162AuditCard[data-row-id] .v177Element,
+body #newAudit .v191AuditCard[data-row-id] .v191Element {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: #101828 !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  line-height: 1.4 !important;
+  margin: 6px 0 10px !important;
+}
+</style>
+</body></html>`;
 }
 function openAuditReport(id) {
   const audit = state.audits.find(a => a.id === id);
