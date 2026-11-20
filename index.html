@@ -38,7 +38,34 @@
       row.observationsV34 = row.observation ? [row.observation] : [];
       row.actionsV34 = row.actionText ? [row.actionText] : [];
     }
-    if (typeof window.renderAuditRows === 'function') window.renderAuditRows();
+    // Keep every displayed copy consistent without invoking legacy row rebuilders.
+    document.querySelectorAll('[data-row-id]').forEach(function(visibleCard){
+      if (visibleCard.getAttribute('data-row-id') !== String(row.id)) return;
+      visibleCard.querySelectorAll('[data-status],[data-v191-status]').forEach(function(statusButton){
+        var value = statusButton.getAttribute('data-v191-status') || statusButton.getAttribute('data-status');
+        statusButton.classList.toggle('active', value === row.status);
+      });
+      var obsBox = visibleCard.querySelector('[data-field="observation"],[data-v191-field="observation"]');
+      var actBox = visibleCard.querySelector('[data-field="actionText"],[data-v191-field="actionText"]');
+      if (obsBox) obsBox.value = row.observation;
+      if (actBox) actBox.value = row.actionText;
+      if (typeof window.auditElementSuggestions !== 'function') return;
+      var suggestions = window.auditElementSuggestions(row);
+      [['obs', suggestions.obs], ['act', suggestions.act]].forEach(function(group){
+        var existing = visibleCard.querySelector('[data-' + group[0] + '],[data-v191-' + group[0] + ']');
+        if (!existing) return;
+        var attribute = existing.hasAttribute('data-v191-' + group[0]) ? 'data-v191-' + group[0] : 'data-' + group[0];
+        var container = existing.parentElement;
+        container.replaceChildren();
+        (group[1] || []).forEach(function(label){
+          var suggestion = document.createElement('button');
+          suggestion.type = 'button';
+          suggestion.setAttribute(attribute, label);
+          suggestion.textContent = label;
+          container.appendChild(suggestion);
+        });
+      });
+    });
   }
   ['pointerdown','touchstart','mousedown','click'].forEach(function(type){
     window.addEventListener(type, changeStatus, true);
