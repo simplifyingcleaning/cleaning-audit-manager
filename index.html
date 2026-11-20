@@ -2,6 +2,50 @@
 <!-- Deployment refresh: online-save repair, 23 October 2026. -->
 <html lang="en">
 <head>
+<script id="v224-status-observation-sync">
+(function(){
+  var defaults = {
+    "Met": "Standard met at the time of audit.",
+    "Partially met": "Standard partially met at the time of audit.",
+    "Not met": "Standard not met at the time of audit.",
+    "N/A": "Not applicable to this element at this location."
+  };
+  function changeStatus(event){
+    var button = event.target.closest && event.target.closest('[data-v191-status],[data-status]');
+    if (!button) return;
+    var card = button.closest('[data-row-id]');
+    var status = button.getAttribute('data-v191-status') || button.getAttribute('data-status');
+    if (!card || !Object.prototype.hasOwnProperty.call(defaults, status)) return;
+    if (typeof draftRows === 'undefined' || !Array.isArray(draftRows)) return;
+    var row = draftRows.find(function(item){return String(item.id) === card.getAttribute('data-row-id');});
+    if (!row) return;
+    // Handle the change once on click, including keyboard activation.
+    event.stopImmediatePropagation();
+    if (event.type !== 'click') return;
+    event.preventDefault();
+    var observation = card.querySelector('[data-field="observation"],[data-v191-field="observation"]');
+    var action = card.querySelector('[data-field="actionText"],[data-v191-field="actionText"]');
+    if (observation) row.observation = observation.value;
+    if (action) row.actionText = action.value;
+    if (row.status !== status) {
+      row.statusNotesV224 = row.statusNotesV224 || {};
+      row.statusNotesV224[row.status] = {observation:row.observation || '', actionText:row.actionText || ''};
+      var saved = row.statusNotesV224[status];
+      row.status = status;
+      row.observation = saved ? saved.observation : defaults[status];
+      row.actionText = saved ? saved.actionText : '';
+      // Older merge routines use these arrays in preference to the current text.
+      row.observationsV34 = row.observation ? [row.observation] : [];
+      row.actionsV34 = row.actionText ? [row.actionText] : [];
+    }
+    if (typeof window.renderAuditRows === 'function') window.renderAuditRows();
+  }
+  ['pointerdown','touchstart','mousedown','click'].forEach(function(type){
+    window.addEventListener(type, changeStatus, true);
+  });
+})();
+</script>
+
 <script id="v223-history-routes">
 window.addEventListener('click',function(e){
  var b=e.target.closest && e.target.closest('[data-report],[data-report-v38],[data-report-v39],[data-pdf-v38],[data-pdf-v39],[data-export-pdf],[data-edit-v39],[data-edit-audit-v38],[data-edit-audit-v37],[data-edit-audit-v36],[data-edit-audit-v46]');
