@@ -67,6 +67,36 @@
       });
     });
   }
+
+  function chooseSuggestion(event){
+    var button = event.target.closest && event.target.closest('[data-obs],[data-act],[data-v191-obs],[data-v191-act]');
+    if (!button) return;
+    var card = button.closest('[data-row-id]');
+    if (!card || typeof draftRows === 'undefined') return;
+    var row = draftRows.find(function(item){ return String(item.id) === card.getAttribute('data-row-id'); });
+    if (!row) return;
+    var isObservation = button.hasAttribute('data-obs') || button.hasAttribute('data-v191-obs');
+    var suffix = isObservation ? 'obs' : 'act';
+    var label = button.getAttribute('data-v191-' + suffix) || button.getAttribute('data-' + suffix);
+    if (!label) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    var field = isObservation ? 'observation' : 'actionText';
+    var input = card.querySelector('[data-field="' + field + '"],[data-v191-field="' + field + '"]');
+    var current = input ? input.value : row[field] || '';
+    // Replace automatic status wording when the auditor selects a specific finding.
+    if (isObservation && Object.keys(defaults).some(function(status){return defaults[status] === current.trim();})) current = '';
+    var lines = current.split(/\n/).map(function(line){return line.trim();}).filter(Boolean);
+    if (lines.indexOf(label) === -1) lines.push(label);
+    row[field] = lines.join('\n');
+    row[isObservation ? 'observationsV34' : 'actionsV34'] = lines;
+    document.querySelectorAll('[data-row-id]').forEach(function(copy){
+      if (copy.getAttribute('data-row-id') !== String(row.id)) return;
+      var box = copy.querySelector('[data-field="' + field + '"],[data-v191-field="' + field + '"]');
+      if (box) box.value = row[field];
+    });
+  }
+  window.addEventListener('click', chooseSuggestion, true);
   ['pointerdown','touchstart','mousedown','click'].forEach(function(type){
     window.addEventListener(type, changeStatus, true);
   });
